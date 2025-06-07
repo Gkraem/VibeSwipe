@@ -15,6 +15,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [originalPrompt, setOriginalPrompt] = useState("");
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedPlaylist, setGeneratedPlaylist] = useState<{
     id?: number;
     title: string;
@@ -123,11 +124,33 @@ export default function Home() {
 
   const generateMoreSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
-      const response = await apiRequest("POST", "/api/songs/generate", {
-        prompt,
-        excludeIds,
-      });
-      return await response.json();
+      // Start progress simulation
+      setGenerationProgress(0);
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 95) return prev;
+          return prev + Math.random() * 15;
+        });
+      }, 500);
+
+      try {
+        const response = await apiRequest("POST", "/api/songs/generate", {
+          prompt,
+          excludeIds,
+        });
+        const result = await response.json();
+        
+        // Complete progress
+        setGenerationProgress(100);
+        clearInterval(progressInterval);
+        setTimeout(() => setGenerationProgress(0), 1000);
+        
+        return result;
+      } catch (error) {
+        clearInterval(progressInterval);
+        setGenerationProgress(0);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setSuggestions(prev => [...prev, ...data.songs]);

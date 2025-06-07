@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Send, Bot, User } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +26,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
     }
   ]);
   const [conversationId, setConversationId] = useState<number | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -37,11 +39,33 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/chat/send", {
-        message,
-        conversationId,
-      });
-      return await response.json();
+      // Start progress simulation
+      setGenerationProgress(0);
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 95) return prev;
+          return prev + Math.random() * 15;
+        });
+      }, 500);
+
+      try {
+        const response = await apiRequest("POST", "/api/chat/send", {
+          message,
+          conversationId,
+        });
+        const result = await response.json();
+        
+        // Complete progress
+        setGenerationProgress(100);
+        clearInterval(progressInterval);
+        setTimeout(() => setGenerationProgress(0), 1000);
+        
+        return result;
+      } catch (error) {
+        clearInterval(progressInterval);
+        setGenerationProgress(0);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       console.log("Chat API response:", data);
@@ -108,7 +132,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
             <div
               key={index}
               className={`flex items-start space-x-4 chat-message ${
-                message.role === "user" ? "justify-end" : ""
+                message.role === "user" ? "justify-end pr-4" : ""
               }`}
             >
               {message.role === "assistant" && (
@@ -139,11 +163,11 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
                 <Bot className="text-white text-sm" />
               </div>
-              <div className="bg-gray-700/50 rounded-2xl rounded-tl-md p-4 max-w-xs">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-75"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+              <div className="bg-gray-700/50 text-gray-200 rounded-2xl rounded-tl-md p-4 max-w-xs">
+                <p className="text-sm mb-2">Curating your perfect playlist...</p>
+                <div className="space-y-1">
+                  <Progress value={generationProgress} className="w-full h-2" />
+                  <p className="text-xs text-gray-400">{Math.round(generationProgress)}% complete</p>
                 </div>
               </div>
             </div>
