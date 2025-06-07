@@ -303,27 +303,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initiate Spotify OAuth for playlist export
   app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
-    // Use dynamic redirect URI for better mobile compatibility
-    const protocol = req.get('x-forwarded-proto') || req.protocol;
-    const host = req.get('host');
-    const redirectUri = `${protocol}://${host}/api/auth/spotify/callback`;
+    // Use the exact redirect URI that's registered in Spotify app
+    const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/auth/spotify/callback';
     
     console.log('=== SPOTIFY AUTH DEBUG ===');
-    console.log('Dynamic redirect URI:', redirectUri);
-    console.log('Protocol:', protocol, 'Host:', host);
+    console.log('Using registered redirect URI:', redirectUri);
     console.log('Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Present' : 'Missing');
     console.log('User ID:', req.user.id);
     console.log('User Agent:', req.get('User-Agent'));
     console.log('==========================');
+    
+    // Check if mobile browser
+    const userAgent = req.get('User-Agent') || '';
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     
     const spotifyAuthUrl = `https://accounts.spotify.com/authorize?` +
       `client_id=${process.env.SPOTIFY_CLIENT_ID}&` +
       `response_type=code&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=playlist-modify-public playlist-modify-private&` +
-      `state=${req.user.id}`;
+      `state=${req.user.id}${isMobile ? '_mobile' : ''}`;
     
     console.log('Generated auth URL:', spotifyAuthUrl);
+    console.log('Is mobile device:', isMobile);
     
     res.json({ authUrl: spotifyAuthUrl });
   });
@@ -349,10 +351,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/?error=spotify_auth_failed');
       }
 
-      // Exchange code for access token - use same dynamic URI
-      const protocol = req.get('x-forwarded-proto') || req.protocol;
-      const host = req.get('host');
-      const redirectUri = `${protocol}://${host}/api/auth/spotify/callback`;
+      // Exchange code for access token - use registered URI
+      const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/auth/spotify/callback';
       
       console.log('=== TOKEN EXCHANGE DEBUG ===');
       console.log('Using hardcoded redirect URI for token exchange:', redirectUri);
@@ -388,8 +388,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (req.session as any).spotifyAccessToken = tokenData.access_token;
       (req.session as any).spotifyUserId = String(userId);
       
-      // Simple redirect for all devices - mobile browsers should handle this properly
-      res.redirect('/?spotify_connected=true');
+      // Check if this is a mobile device based on state parameter
+      const isMobile = String(userId).includes('_mobile');
+      const cleanUserId = String(userId).replace('_mobile', '');
+      
+      if (isMobile) {
+        // For mobile: create a special redirect page that forces app return
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Spotify Connected - Returning to App</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta charset="utf-8">
+              <style>
+                body { 
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  text-align: center; 
+                  padding: 60px 20px; 
+                  background: linear-gradient(135deg, #1db954, #1ed760);
+                  color: white;
+                  margin: 0;
+                  min-height: 100vh;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  align-items: center;
+                }
+                .success { font-size: 28px; margin-bottom: 20px; font-weight: bold; }
+                .message { font-size: 18px; opacity: 0.9; margin-bottom: 40px; }
+                .button { 
+                  display: inline-block;
+                  background: white;
+                  color: #1db954;
+                  padding: 16px 32px;
+                  border-radius: 30px;
+                  text-decoration: none;
+                  font-weight: bold;
+                  font-size: 18px;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                  transition: transform 0.2s;
+                }
+                .button:hover { transform: translateY(-2px); }
+                .loading { font-size: 14px; opacity: 0.8; margin-top: 30px; }
+              </style>
+            </head>
+            <body>
+              <div class="success">✓ Spotify Connected!</div>
+              <div class="message">Successfully connected to your Spotify account.<br>Returning to create your playlist...</div>
+              <a href="/?spotify_connected=true" class="button">Continue to Your Playlist</a>
+              <div class="loading">Redirecting automatically in 3 seconds...</div>
+              <script>
+                // Force redirect after short delay
+                setTimeout(function() {
+                  window.location.href = '/?spotify_connected=true';
+                }, 3000);
+                
+                // Also try immediate redirect for browsers that support it
+                setTimeout(function() {
+                  try {
+                    window.location.replace('/?spotify_connected=true');
+                  } catch(e) {
+                    console.log('Immediate redirect not supported');
+                  }
+                }, 500);
+              </script>
+            </body>
+          </html>
+        `);
+      } else {
+        // Desktop: simple redirect
+        res.redirect('/?spotify_connected=true');
+      }
     } catch (error) {
       console.error('Spotify callback error:', error);
       res.redirect('/?error=spotify_callback_failed');
