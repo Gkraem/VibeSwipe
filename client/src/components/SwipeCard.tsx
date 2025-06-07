@@ -186,7 +186,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
             </div>
             
             {/* Description */}
-            <p className="text-sm text-gray-300 line-clamp-3">
+            <p className="text-sm text-gray-300 truncate">
               {song.energy && song.energy > 0.7 ? "High-energy" : 
                song.energy && song.energy < 0.4 ? "Mellow" : "Mid-tempo"} {song.genres[0].toLowerCase()} track
               {song.valence && song.valence > 0.7 ? " with uplifting vibes" : 

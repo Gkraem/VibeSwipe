@@ -234,7 +234,8 @@ export default function Home() {
             <Button
               onClick={() => {
                 const excludeIds = suggestions.map(s => s.id);
-                generateMoreSongsMutation.mutate({ prompt: originalPrompt, excludeIds });
+                const prompt = originalPrompt || "Generate more music recommendations";
+                generateMoreSongsMutation.mutate({ prompt, excludeIds });
               }}
               disabled={generateMoreSongsMutation.isPending}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
