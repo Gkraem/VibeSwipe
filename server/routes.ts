@@ -319,6 +319,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint - delete user (restricted to admin)
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userEmail = req.user.email;
+      const targetUserId = req.params.id;
+      
+      // Check if user is admin
+      if (userEmail !== 'gkraem@vt.edu') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Prevent admin from deleting their own account
+      if (req.user.id === targetUserId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      // Check if target user exists
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Prevent deleting other admin accounts
+      if (targetUser.email === 'gkraem@vt.edu') {
+        return res.status(400).json({ message: "Cannot delete admin accounts" });
+      }
+      
+      await storage.deleteUser(targetUserId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Get Spotify connection status
   app.get('/api/spotify/status', isAuthenticated, async (req: any, res) => {
     try {

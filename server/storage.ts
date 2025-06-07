@@ -26,6 +26,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  deleteUser(id: string): Promise<void>;
   
   // Conversation operations
   createConversation(conversation: InsertConversation): Promise<Conversation>;
@@ -126,6 +127,23 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .orderBy(desc(users.createdAt));
     return allUsers;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    // Delete related data first
+    await db.delete(swipeHistory).where(eq(swipeHistory.userId, id));
+    
+    // Delete messages first, then conversations
+    const userConversations = await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.userId, id));
+    for (const conv of userConversations) {
+      await db.delete(messages).where(eq(messages.conversationId, conv.id));
+    }
+    await db.delete(conversations).where(eq(conversations.userId, id));
+    
+    await db.delete(playlists).where(eq(playlists.userId, id));
+    
+    // Finally delete the user
+    await db.delete(users).where(eq(users.id, id));
   }
 
   // Conversation operations

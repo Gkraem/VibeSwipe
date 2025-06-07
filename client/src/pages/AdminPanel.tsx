@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, User } from "lucide-react";
+import { ArrowLeft, Users, User, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Link, Redirect } from "wouter";
 
 interface AdminUser {
@@ -17,6 +18,7 @@ interface AdminUser {
 
 export default function AdminPanel() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Redirect if not admin
   if ((user as any)?.email !== 'gkraem@vt.edu') {
@@ -25,6 +27,27 @@ export default function AdminPanel() {
 
   const { data: users, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "User Deleted",
+        description: "User has been successfully deleted.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete user",
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -68,6 +91,7 @@ export default function AdminPanel() {
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Email</th>
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Joined</th>
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Spotify</th>
+                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -105,6 +129,21 @@ export default function AdminPanel() {
                               Not connected
                             </span>
                           )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Button
+                            onClick={() => deleteUserMutation.mutate(user.id)}
+                            disabled={deleteUserMutation.isPending || user.email === 'gkraem@vt.edu'}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-600 text-red-400 hover:bg-red-600/10 disabled:opacity-50"
+                          >
+                            {deleteUserMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
                         </td>
                       </tr>
                     ))}
