@@ -316,6 +316,9 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
   }
 }
 
+// Global set to track all generated songs across all sessions
+let globalGeneratedSongs = new Set<string>();
+
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
   const songs: Song[] = [];
   const seenSongs = new Set<string>();
@@ -333,6 +336,10 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
     return `${normalize(title)}:::${normalize(artist)}`;
   };
 
+  // Copy the global set to prevent modifications during processing
+  const existingSongs = new Set(globalGeneratedSongs);
+  console.log(`Excluding ${excludeIds.length} song IDs and ${existingSongs.size} previously generated songs from new batch`);
+
   try {
     // Use OpenAI to generate a curated list of 40 songs initially (to account for filtering)
     const response = await openai.chat.completions.create({
@@ -348,6 +355,10 @@ CRITICAL REQUIREMENTS:
 - Include both classic hits and recent popular releases
 - For each genre, include the most recognizable and streamed tracks
 - Double-check that artist names and song titles are exactly correct
+- ABSOLUTELY NO DUPLICATES - each song must be completely unique
+- If this is a follow-up request, generate completely different songs from any previous recommendations
+
+${excludeIds.length > 0 ? `IMPORTANT: This is a follow-up request. You must generate completely NEW songs that are different from the ${excludeIds.length} songs already provided. Focus on different artists, subgenres, and time periods within the requested style.` : ''}
 
 Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
@@ -388,20 +399,17 @@ For specific genres like Afro House, include established artists like Black Coff
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
         
+        // Create unique ID for the song first
+        const songId = `ai-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
+        
         // Use enhanced normalization for absolute duplicate prevention
         const songKey = createSongKey(songData.title, songData.artist);
         
-        // Skip if we've already seen this song
-        if (seenSongs.has(songKey)) {
+        // Skip if we've already seen this song in any previous generation
+        if (seenSongs.has(songKey) || existingSongs.has(songKey)) {
           console.log(`Skipping duplicate: "${songData.title}" by "${songData.artist}"`);
           continue;
         }
-        
-        // Create unique ID for the song
-        const songId = `ai-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Skip if this song ID is in excludeIds
-        if (excludeIds.includes(songId)) continue;
         
         // Get both album art and preview URL from Spotify
         const spotifyToken = await getSpotifyClientToken();
