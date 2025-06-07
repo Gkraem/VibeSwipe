@@ -514,10 +514,10 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
         ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
         : null;
       
-      // If Spotify doesn't have preview URL, try to get YouTube audio
+      // If Spotify doesn't have preview URL, try to get iTunes audio
       let previewUrl = track.preview_url || null;
       if (!previewUrl) {
-        previewUrl = await getYouTubeAudioPreview(title, artist);
+        previewUrl = await getITunesAudioPreview(title, artist);
       }
       
       return { 
@@ -533,34 +533,62 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
   }
 }
 
-// Get YouTube audio preview for a song
-async function getYouTubeAudioPreview(title: string, artist: string): Promise<string | null> {
+// Get iTunes audio preview for a song
+async function getITunesAudioPreview(title: string, artist: string): Promise<string | null> {
   try {
-    // For now, we'll create a simple YouTube search URL that can be used for audio
-    // This is a simplified approach - in production you'd use YouTube Data API
-    const searchQuery = encodeURIComponent(`${title} ${artist} official audio`);
+    // iTunes Search API doesn't require authentication and provides 30-second previews
+    const searchQuery = encodeURIComponent(`${title} ${artist}`);
+    const itunesSearchUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&entity=song&limit=5`;
     
-    // Since we can't directly get YouTube audio URLs without complex setup,
-    // let's use a different approach: create preview URLs using a music service
-    // that's more likely to have previews available
+    const response = await fetch(itunesSearchUrl);
+    if (!response.ok) {
+      console.log('iTunes API request failed');
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      // Find the best match
+      for (const track of data.results) {
+        const trackTitle = track.trackName?.toLowerCase() || '';
+        const artistName = track.artistName?.toLowerCase() || '';
+        const titleLower = title.toLowerCase();
+        const artistLower = artist.toLowerCase();
+        
+        // Check for close matches
+        if (trackTitle.includes(titleLower) || titleLower.includes(trackTitle)) {
+          if (artistName.includes(artistLower) || artistLower.includes(artistName)) {
+            if (track.previewUrl) {
+              console.log(`Found iTunes preview for "${title}" by "${artist}":`, track.previewUrl);
+              return track.previewUrl;
+            }
+          }
+        }
+      }
+      
+      // If no exact match, try the first result with a preview
+      for (const track of data.results) {
+        if (track.previewUrl) {
+          console.log(`Using iTunes preview for similar track: "${track.trackName}" by "${track.artistName}"`);
+          return track.previewUrl;
+        }
+      }
+    }
     
-    return await getAlternativePreviewUrl(title, artist);
+    return null;
   } catch (error) {
-    console.error('Error getting YouTube preview:', error);
+    console.error('Error getting iTunes preview:', error);
     return null;
   }
 }
 
-// Alternative preview URL generation (using a demo approach)
+// Alternative preview URL generation using iTunes
 async function getAlternativePreviewUrl(title: string, artist: string): Promise<string | null> {
-  // For demonstration, we'll create a mock preview URL
-  // In production, you would integrate with services like:
-  // - iTunes Preview API
-  // - SoundCloud API  
-  // - YouTube Data API
-  // - Last.fm API
+  // First try iTunes API
+  const itunesPreview = await getITunesAudioPreview(title, artist);
+  if (itunesPreview) return itunesPreview;
   
-  // For now, let's try a different Spotify search strategy
+  // Then try alternative Spotify search
   try {
     const spotifyToken = await getSpotifyClientToken();
     if (!spotifyToken) return null;
