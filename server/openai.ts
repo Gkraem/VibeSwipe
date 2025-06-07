@@ -430,9 +430,6 @@ For specific genres like Afro House, include established artists like Black Coff
           continue;
         }
 
-        // Add to seen songs set
-        seenSongs.add(songKey);
-
         const song: Song = {
           id: songId,
           title: songData.title,
@@ -445,6 +442,12 @@ For specific genres like Afro House, include established artists like Black Coff
           valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
           previewUrl: spotifyData.previewUrl
         };
+        
+        // Add to seen songs for this generation
+        seenSongs.add(songKey);
+        
+        // Add to global tracking to prevent future duplicates
+        globalGeneratedSongs.add(songKey);
         
         songs.push(song);
       }
@@ -483,7 +486,7 @@ For specific genres like Afro House, include established artists like Black Coff
           
           // Use enhanced normalization for absolute duplicate prevention
           const songKey = createSongKey(songData.title, songData.artist);
-          if (seenSongs.has(songKey)) {
+          if (seenSongs.has(songKey) || existingSongs.has(songKey)) {
             console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
             continue;
           }
@@ -511,6 +514,9 @@ For specific genres like Afro House, include established artists like Black Coff
 
           // Add to seen songs set
           seenSongs.add(songKey);
+          
+          // Add to global tracking to prevent future duplicates
+          globalGeneratedSongs.add(songKey);
 
           const song: Song = {
             id: songId,
