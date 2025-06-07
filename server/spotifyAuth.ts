@@ -48,7 +48,9 @@ export async function setupAuth(app: Express) {
       {
         clientID: process.env.SPOTIFY_CLIENT_ID!,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-        callbackURL: "/api/auth/spotify/callback",
+        callbackURL: process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/api/auth/spotify/callback`
+          : "/api/auth/spotify/callback",
       },
       async (accessToken: string, refreshToken: string, expires_in: number, profile: any, done: any) => {
         try {
