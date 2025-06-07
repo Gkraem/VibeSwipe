@@ -103,24 +103,15 @@ export function PlaylistDisplay({
         localStorage.setItem('pendingSpotifyExport', playlistId.toString());
       }
       
-      // Use mobile-friendly redirect flow
-      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // For mobile: store current state and redirect in same window
-        sessionStorage.setItem('mobile_export_playlist', JSON.stringify({
-          id: playlistId,
-          title,
-          description,
-          songs
-        }));
-      }
-      
       // Get Spotify auth URL
       const response = await apiRequest("GET", "/api/spotify/auth");
       const data = await response.json();
       
-      // Always redirect for better mobile compatibility
+      // Start polling for auth completion (works for both mobile and desktop)
+      localStorage.setItem('spotify_auth_pending', 'true');
+      startAuthPolling();
+      
+      // Simple redirect approach for all devices
       window.location.href = data.authUrl;
       
     } catch (error) {
@@ -130,6 +121,39 @@ export function PlaylistDisplay({
         variant: "destructive",
       });
     }
+  };
+
+  const startAuthPolling = () => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await apiRequest("GET", "/api/spotify/auth-status");
+        const data = await response.json();
+        
+        if (data.authenticated) {
+          localStorage.removeItem('spotify_auth_pending');
+          toast({
+            title: "Spotify Connected!",
+            description: "Now exporting your playlist...",
+          });
+          
+          // Trigger the export
+          if (playlistId) {
+            exportToSpotifyMutation.mutate(playlistId);
+          }
+          return;
+        }
+      } catch (error) {
+        // Continue polling if request fails
+      }
+      
+      // Continue polling if still pending
+      if (localStorage.getItem('spotify_auth_pending') === 'true') {
+        setTimeout(checkAuthStatus, 2000);
+      }
+    };
+    
+    // Start polling after a short delay
+    setTimeout(checkAuthStatus, 3000);
   };
 
 

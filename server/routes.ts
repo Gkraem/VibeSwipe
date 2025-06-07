@@ -301,6 +301,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check Spotify auth status for polling
+  app.get('/api/spotify/auth-status', isAuthenticated, (req: any, res) => {
+    try {
+      const accessToken = (req.session as any).spotifyAccessToken;
+      res.json({ authenticated: !!accessToken });
+    } catch (error) {
+      res.json({ authenticated: false });
+    }
+  });
+
   // Initiate Spotify OAuth for playlist export
   app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
     // Use the exact redirect URI that's registered in Spotify app
@@ -392,74 +402,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isMobile = String(userId).includes('_mobile');
       const cleanUserId = String(userId).replace('_mobile', '');
       
-      if (isMobile) {
-        // For mobile: create a special redirect page that forces app return
-        res.send(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Spotify Connected - Returning to App</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <meta charset="utf-8">
-              <style>
-                body { 
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                  text-align: center; 
-                  padding: 60px 20px; 
-                  background: linear-gradient(135deg, #1db954, #1ed760);
-                  color: white;
-                  margin: 0;
-                  min-height: 100vh;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  align-items: center;
+      // Create a success page that closes the window (mobile-friendly)
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Spotify Connected</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta charset="utf-8">
+            <style>
+              body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                text-align: center; 
+                padding: 60px 20px; 
+                background: linear-gradient(135deg, #1db954, #1ed760);
+                color: white;
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+              }
+              .success { font-size: 32px; margin-bottom: 20px; font-weight: bold; }
+              .message { font-size: 20px; opacity: 0.9; margin-bottom: 30px; line-height: 1.4; }
+              .instruction { font-size: 16px; opacity: 0.8; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="success">✓ Success!</div>
+            <div class="message">Your Spotify account is now connected.<br>You can close this page and return to the app.</div>
+            <div class="instruction">The playlist export will complete automatically.</div>
+            <script>
+              // Try to close the window/tab
+              setTimeout(function() {
+                try {
+                  window.close();
+                } catch(e) {
+                  console.log('Cannot close window automatically');
                 }
-                .success { font-size: 28px; margin-bottom: 20px; font-weight: bold; }
-                .message { font-size: 18px; opacity: 0.9; margin-bottom: 40px; }
-                .button { 
-                  display: inline-block;
-                  background: white;
-                  color: #1db954;
-                  padding: 16px 32px;
-                  border-radius: 30px;
-                  text-decoration: none;
-                  font-weight: bold;
-                  font-size: 18px;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                  transition: transform 0.2s;
-                }
-                .button:hover { transform: translateY(-2px); }
-                .loading { font-size: 14px; opacity: 0.8; margin-top: 30px; }
-              </style>
-            </head>
-            <body>
-              <div class="success">✓ Spotify Connected!</div>
-              <div class="message">Successfully connected to your Spotify account.<br>Returning to create your playlist...</div>
-              <a href="/?spotify_connected=true" class="button">Continue to Your Playlist</a>
-              <div class="loading">Redirecting automatically in 3 seconds...</div>
-              <script>
-                // Force redirect after short delay
-                setTimeout(function() {
-                  window.location.href = '/?spotify_connected=true';
-                }, 3000);
-                
-                // Also try immediate redirect for browsers that support it
-                setTimeout(function() {
-                  try {
-                    window.location.replace('/?spotify_connected=true');
-                  } catch(e) {
-                    console.log('Immediate redirect not supported');
+              }, 1000);
+              
+              // Also try to go back in history
+              setTimeout(function() {
+                try {
+                  if (window.history.length > 1) {
+                    window.history.back();
                   }
-                }, 500);
-              </script>
-            </body>
-          </html>
-        `);
-      } else {
-        // Desktop: simple redirect
-        res.redirect('/?spotify_connected=true');
-      }
+                } catch(e) {
+                  console.log('Cannot navigate back');
+                }
+              }, 2000);
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Spotify callback error:', error);
       res.redirect('/?error=spotify_callback_failed');
