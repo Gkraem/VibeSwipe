@@ -14,6 +14,13 @@ declare global {
   }
 }
 
+declare module "express-session" {
+  interface SessionData {
+    spotifyAccessToken?: string;
+    userId?: string;
+  }
+}
+
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {

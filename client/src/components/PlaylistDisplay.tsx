@@ -56,7 +56,7 @@ export function PlaylistDisplay({
         onSpotifyExport?.(data.playlistUrl);
       }
     },
-    onError: (error) => {
+    onError: async (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -64,10 +64,31 @@ export function PlaylistDisplay({
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }
+      
+      // Check if we need Spotify auth
+      if (error.message.includes("Spotify authorization required") || error.message.includes("needsAuth")) {
+        try {
+          // Get Spotify auth URL
+          const authResponse = await apiRequest("GET", "/api/spotify/auth-url");
+          const authData = await authResponse.json();
+          
+          toast({
+            title: "Spotify Authorization Required",
+            description: "Redirecting to Spotify to authorize playlist creation...",
+          });
+          
+          // Redirect to Spotify for authorization
+          window.location.href = authData.authUrl;
+          return;
+        } catch (authError) {
+          console.error("Failed to get Spotify auth URL:", authError);
+        }
+      }
+      
       toast({
         title: "Export Failed",
         description: error instanceof Error ? error.message : "Failed to export playlist to Spotify",
