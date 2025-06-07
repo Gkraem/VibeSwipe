@@ -425,6 +425,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's Spotify access token from session
       const accessToken = (req.session as any).spotifyAccessToken;
       if (!accessToken) {
+        // Check if user has Spotify credentials stored
+        const user = await storage.getUser(userId);
+        if (user?.spotifyUsername) {
+          return res.status(401).json({ 
+            message: "Ready to connect your Spotify account for seamless exports",
+            requiresAuth: true,
+            hasSpotifyAccount: true
+          });
+        }
         return res.status(401).json({ 
           message: "Spotify access token not found. Please connect to Spotify first.",
           requiresAuth: true

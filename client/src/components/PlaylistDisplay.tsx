@@ -71,8 +71,21 @@ export function PlaylistDisplay({
       
       // Check if this is a Spotify auth error
       try {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes("Spotify access token not found") || errorMessage.includes("connect to Spotify")) {
+        const errorResponse = await (error as any).response?.json?.();
+        const errorMessage = errorResponse?.message || (error instanceof Error ? error.message : String(error));
+        
+        if (errorResponse?.requiresAuth) {
+          if (errorResponse?.hasSpotifyAccount) {
+            toast({
+              title: "Connect Your Spotify Account",
+              description: "Complete the one-time setup to enable seamless playlist exports",
+            });
+          } else {
+            toast({
+              title: "Spotify Connection Required",
+              description: "Connect your Spotify account to export playlists",
+            });
+          }
           // Open Spotify OAuth popup
           await handleSpotifyAuth();
           return;
