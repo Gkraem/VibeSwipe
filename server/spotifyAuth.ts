@@ -102,8 +102,23 @@ export async function setupAuth(app: Express) {
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
       
       if (isMobile) {
-        // For mobile, explicitly redirect to prevent Spotify dashboard redirect
-        res.redirect(`${req.protocol}://${req.get('host')}/`);
+        // For mobile, send HTML with JavaScript redirect to force proper navigation
+        const redirectUrl = `${req.protocol}://${req.get('host')}/`;
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Redirecting...</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+          </head>
+          <body>
+            <script>
+              window.location.replace('${redirectUrl}');
+            </script>
+            <p>Redirecting to Vibe Swipe...</p>
+          </body>
+          </html>
+        `);
       } else {
         // For desktop, use standard redirect
         res.redirect('/');
