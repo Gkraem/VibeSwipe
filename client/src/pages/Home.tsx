@@ -58,15 +58,23 @@ export default function Home() {
   });
   const { toast } = useToast();
 
-  // Clear home screen on app load - no recovery mechanism
+  // Clear home screen on app load but preserve original prompt if available
   useEffect(() => {
     localStorage.removeItem('lastGeneratedPlaylist');
     setGeneratedPlaylist(null);
     setSuggestions([]);
     setCurrentIndex(0);
     setLikedSongs([]);
-    setOriginalPrompt("");
     setGenerationProgress(0);
+    
+    // Recover original prompt if available
+    const savedPrompt = localStorage.getItem('originalPrompt');
+    if (savedPrompt) {
+      setOriginalPrompt(savedPrompt);
+      console.log("Recovered original prompt:", savedPrompt);
+    } else {
+      setOriginalPrompt("");
+    }
   }, []);
 
   // Handle Spotify authentication return
@@ -261,12 +269,15 @@ export default function Home() {
 
   const handleSuggestionsGenerated = (songs: Song[], prompt: string) => {
     console.log("handleSuggestionsGenerated called with:", songs.length, "songs");
-    console.log("First few songs:", songs.slice(0, 3));
+    console.log("Setting original prompt to:", prompt);
     setSuggestions(songs);
     setCurrentIndex(0);
     setLikedSongs([]);
     setOriginalPrompt(prompt);
     setGeneratedPlaylist(null);
+    
+    // Persist the original prompt to localStorage for recovery
+    localStorage.setItem('originalPrompt', prompt);
   };
 
   const handleResetSearch = () => {
@@ -276,6 +287,9 @@ export default function Home() {
     setOriginalPrompt("");
     setGeneratedPlaylist(null);
     setGenerationProgress(0);
+    
+    // Clear stored prompt
+    localStorage.removeItem('originalPrompt');
     
     // Trigger chat reset
     const resetEvent = new Event('resetChat');
