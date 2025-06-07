@@ -482,6 +482,7 @@ async function getSpotifyClientToken(): Promise<string | null> {
 async function getSpotifyTrackData(title: string, artist: string, token: string): Promise<{ albumArt: string | null; previewUrl: string | null }> {
   try {
     const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
+    console.log(`🎵 Searching Spotify for: "${title}" by "${artist}"`);
     const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -489,6 +490,7 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
     });
 
     if (!response.ok) {
+      console.log(`❌ Spotify API error for "${title}": ${response.status}`);
       return { albumArt: null, previewUrl: null };
     }
 
@@ -500,12 +502,16 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
         ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
         : null;
       
+      const previewUrl = track.preview_url;
+      console.log(`🎧 Found track "${track.name}" by "${track.artists[0].name}" - Preview: ${previewUrl ? 'Available' : 'Not Available'}`);
+      
       return { 
         albumArt, 
-        previewUrl: track.preview_url || null 
+        previewUrl: previewUrl || null 
       };
     }
 
+    console.log(`❌ No Spotify results found for "${title}" by "${artist}"`);
     return { albumArt: null, previewUrl: null };
   } catch (error) {
     console.error('Error fetching Spotify track data:', error);
