@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Play, Music, ExternalLink, Sparkles, Edit3, Check, X } from "lucide-react";
+import { SiSpotify } from "react-icons/si";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { getSpotifyWebAPI } from "@/lib/spotifyWebApi";
 import { useState, useEffect } from "react";
 import type { Song } from "@shared/schema";
 
@@ -43,71 +45,44 @@ export function PlaylistDisplay({
   const [editedTitle, setEditedTitle] = useState(title);
 
   const exportToSpotifyMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest("POST", `/api/playlists/${id}/export-spotify`);
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Export Successful!",
-        description: data.message || "Your playlist has been exported to Spotify",
-      });
-      if (data.playlistUrl) {
-        onSpotifyExport?.(data.playlistUrl);
-      }
-    },
-    onError: async (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 500);
-        return;
+    mutationFn: async () => {
+      const spotifyAPI = getSpotifyWebAPI();
+      
+      if (!title || !songs.length) {
+        throw new Error('No playlist data to export');
       }
       
-      // Check if this is a Spotify auth error
-      try {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        
-        // Parse error message if it contains JSON
-        let errorData = null;
-        if (errorMessage.includes('401:') && errorMessage.includes('{')) {
-          const jsonStart = errorMessage.indexOf('{');
-          const jsonStr = errorMessage.substring(jsonStart);
-          try {
-            errorData = JSON.parse(jsonStr);
-          } catch (parseError) {
-            // Continue with string message
-          }
-        }
-        
-        if (errorData?.requiresAuth || errorMessage.includes("requiresAuth")) {
-          if (errorData?.hasSpotifyAccount || errorMessage.includes("hasSpotifyAccount")) {
-            toast({
-              title: "Connect Your Spotify Account",
-              description: "Complete the one-time setup to enable seamless playlist exports",
-            });
-          } else {
-            toast({
-              title: "Spotify Connection Required", 
-              description: "Connect your Spotify account to export playlists",
-            });
-          }
-          // Open Spotify OAuth popup
-          await handleSpotifyAuth();
-          return;
-        }
-      } catch (e) {
-        // Continue to regular error handling
+      const result = await spotifyAPI.exportPlaylistToSpotify(
+        songs,
+        title,
+        description
+      );
+      
+      return result;
+    },
+    onSuccess: (data) => {
+      if (onSpotifyExport && data.playlistUrl) {
+        onSpotifyExport(data.playlistUrl);
+      }
+      toast({
+        title: "Success!",
+        description: "Your playlist has been exported to Spotify!",
+      });
+    },
+    onError: (error) => {
+      let errorMessage = "Failed to export playlist to Spotify";
+      
+      if (error.message.includes("Popup blocked")) {
+        errorMessage = "Please allow popups for this site and try again";
+      } else if (error.message.includes("Authentication cancelled")) {
+        errorMessage = "Spotify authentication was cancelled";
+      } else if (error.message.includes("No tracks found")) {
+        errorMessage = "No matching tracks found on Spotify";
       }
       
       toast({
         title: "Export Failed",
-        description: error instanceof Error ? error.message : "Failed to export playlist to Spotify",
+        description: errorMessage,
         variant: "destructive",
       });
     },
