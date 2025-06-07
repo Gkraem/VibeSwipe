@@ -339,6 +339,17 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
   // Copy the global set to prevent modifications during processing
   const existingSongs = new Set(globalGeneratedSongs);
   console.log(`Excluding ${excludeIds.length} song IDs and ${existingSongs.size} previously generated songs from new batch`);
+  
+  // Create additional exclusion keys from previous song IDs if they contain recognizable patterns
+  const previousSongKeys = new Set<string>();
+  for (const id of excludeIds) {
+    // Extract song info from ID patterns if possible, or use brute force exclusion
+    if (existingSongs.size === 0) {
+      // For the first additional generation, create keys from the previous batch
+      // This is a fallback when global tracking failed
+      previousSongKeys.add(id);
+    }
+  }
 
   try {
     // Use OpenAI to generate a curated list of 40 songs initially (to account for filtering)
@@ -358,7 +369,14 @@ CRITICAL REQUIREMENTS:
 - ABSOLUTELY NO DUPLICATES - each song must be completely unique
 - If this is a follow-up request, generate completely different songs from any previous recommendations
 
-${excludeIds.length > 0 ? `IMPORTANT: This is a follow-up request. You must generate completely NEW songs that are different from the ${excludeIds.length} songs already provided. Focus on different artists, subgenres, and time periods within the requested style.` : ''}
+${excludeIds.length > 0 ? `CRITICAL: This is a follow-up request for MORE songs. The user has already received ${excludeIds.length} songs. You MUST:
+1. Generate completely DIFFERENT songs - NO repeats whatsoever
+2. Focus on DIFFERENT artists (avoid repeating any artist from the first batch)
+3. Explore different subgenres and time periods within the requested style
+4. Use completely fresh track selections - imagine this is a "Part 2" playlist
+5. If the style has limited variety, branch into closely related genres
+
+For example, if the first batch had Black Coffee tracks, now include Culoe De Song, Da Capo, or other similar artists instead.` : ''}
 
 Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
@@ -408,6 +426,14 @@ For specific genres like Afro House, include established artists like Black Coff
         // Skip if we've already seen this song in any previous generation
         if (seenSongs.has(songKey) || existingSongs.has(songKey)) {
           console.log(`Skipping duplicate: "${songData.title}" by "${songData.artist}"`);
+          continue;
+        }
+
+        // Additional strict duplicate checking - check for artist name repeats
+        const artistKey = createSongKey("", songData.artist).replace(":::", "");
+        const existingArtistCount = Array.from(seenSongs).filter(key => key.includes(`:::${artistKey}`)).length;
+        if (existingArtistCount >= 2) { // Allow max 2 songs per artist per generation
+          console.log(`Skipping "${songData.title}" - too many songs from artist "${songData.artist}" (${existingArtistCount} already added)`);
           continue;
         }
         
@@ -488,6 +514,14 @@ For specific genres like Afro House, include established artists like Black Coff
           const songKey = createSongKey(songData.title, songData.artist);
           if (seenSongs.has(songKey) || existingSongs.has(songKey)) {
             console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
+            continue;
+          }
+
+          // Additional strict duplicate checking for additional songs too
+          const artistKey = createSongKey("", songData.artist).replace(":::", "");
+          const existingArtistCount = Array.from(seenSongs).filter(key => key.includes(`:::${artistKey}`)).length;
+          if (existingArtistCount >= 2) {
+            console.log(`Skipping additional song "${songData.title}" - too many songs from artist "${songData.artist}" (${existingArtistCount} already added)`);
             continue;
           }
           

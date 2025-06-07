@@ -191,16 +191,21 @@ export default function Home() {
 
   const generateMoreSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
-      // Start countdown timer
-      setTimeRemaining(31);
+      // Start with longer estimate for additional generations
+      let estimatedDuration = 120000; // Start with 2 minutes for more songs
+      setTimeRemaining(120);
       const startTime = Date.now();
-      const expectedDuration = 31000; // 31 seconds expected duration
       
       const countdownInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, Math.ceil((expectedDuration - elapsed) / 1000));
+        const remaining = Math.max(0, Math.ceil((estimatedDuration - elapsed) / 1000));
         setTimeRemaining(remaining);
-      }, 100);
+        
+        // Dynamically extend if taking longer
+        if (remaining <= 10 && elapsed < 180000) { // Max 3 minutes
+          estimatedDuration += 30000; // Add 30 more seconds
+        }
+      }, 1000);
 
       try {
         const response = await apiRequest("POST", "/api/songs/generate", {

@@ -62,16 +62,21 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      // Start countdown timer
-      setTimeRemaining(31);
+      // Start with initial estimate but dynamically adjust
+      let estimatedDuration = 60000; // Start with 60 seconds
+      setTimeRemaining(60);
       const startTime = Date.now();
-      const expectedDuration = 31000; // 31 seconds expected duration
       
       const countdownInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, Math.ceil((expectedDuration - elapsed) / 1000));
+        const remaining = Math.max(0, Math.ceil((estimatedDuration - elapsed) / 1000));
         setTimeRemaining(remaining);
-      }, 100);
+        
+        // Dynamically extend if taking longer
+        if (remaining <= 5 && elapsed < 120000) { // Max 2 minutes
+          estimatedDuration += 15000; // Add 15 more seconds
+        }
+      }, 1000);
 
       try {
         const response = await apiRequest("POST", "/api/chat/send", {
