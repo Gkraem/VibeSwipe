@@ -2,9 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
-import { Music, Moon, Sun, LogOut, User, Settings } from "lucide-react";
+import { Music, Moon, Sun, LogOut, User, Settings, Home, List } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export function Navigation() {
   const { user } = useAuth();
@@ -95,24 +95,22 @@ export function Navigation() {
 }
 
 export function BottomNavigation() {
+  const [location] = useLocation();
+  
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-sm border-t border-gray-700 px-4 py-2 lg:hidden">
       <div className="flex justify-around items-center">
-        <Button variant="ghost" className="flex flex-col items-center p-2 text-green-500">
-          <Music className="text-lg" />
-          <span className="text-xs mt-1">Home</span>
+        <Button asChild variant="ghost" className={`flex flex-col items-center p-2 ${location === '/' ? 'text-green-500' : 'text-gray-400 hover:text-white'}`}>
+          <Link href="/">
+            <Home className="text-lg" />
+            <span className="text-xs mt-1">Home</span>
+          </Link>
         </Button>
-        <Button variant="ghost" className="flex flex-col items-center p-2 text-gray-400 hover:text-white">
-          <Music className="text-lg" />
-          <span className="text-xs mt-1">Discover</span>
-        </Button>
-        <Button variant="ghost" className="flex flex-col items-center p-2 text-gray-400 hover:text-white">
-          <Music className="text-lg" />
-          <span className="text-xs mt-1">Playlists</span>
-        </Button>
-        <Button variant="ghost" className="flex flex-col items-center p-2 text-gray-400 hover:text-white">
-          <User className="text-lg" />
-          <span className="text-xs mt-1">Profile</span>
+        <Button asChild variant="ghost" className={`flex flex-col items-center p-2 ${location === '/playlists' ? 'text-green-500' : 'text-gray-400 hover:text-white'}`}>
+          <Link href="/playlists">
+            <List className="text-lg" />
+            <span className="text-xs mt-1">Playlists</span>
+          </Link>
         </Button>
       </div>
     </nav>

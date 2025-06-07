@@ -301,6 +301,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete playlist endpoint
+  app.delete('/api/playlists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const playlistId = parseInt(req.params.id);
+
+      const playlist = await storage.getPlaylist(playlistId);
+      if (!playlist || playlist.userId !== userId) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      await storage.deletePlaylist(playlistId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting playlist:", error);
+      res.status(500).json({ message: "Failed to delete playlist" });
+    }
+  });
+
   // Admin endpoint - get all users (restricted to admin)
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
