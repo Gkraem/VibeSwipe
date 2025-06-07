@@ -481,34 +481,50 @@ async function getSpotifyClientToken(): Promise<string | null> {
 // Get both album art and preview URL from Spotify for a specific song
 async function getSpotifyTrackData(title: string, artist: string, token: string): Promise<{ albumArt: string | null; previewUrl: string | null }> {
   try {
-    const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
-    console.log(`🎵 Searching Spotify for: "${title}" by "${artist}"`);
-    const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    // Try multiple search strategies to find tracks with previews
+    const searchQueries = [
+      `track:"${title}" artist:"${artist}"`,
+      `"${title}" "${artist}"`,
+      `${title} ${artist}`,
+      title // fallback
+    ];
+
+    for (const query of searchQueries) {
+      const encodedQuery = encodeURIComponent(query);
+      console.log(`🎵 Searching Spotify for: "${title}" by "${artist}" (query: ${query})`);
+      
+      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodedQuery}&type=track&limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.log(`❌ Spotify API error for "${title}": ${response.status}`);
+        continue;
       }
-    });
 
-    if (!response.ok) {
-      console.log(`❌ Spotify API error for "${title}": ${response.status}`);
-      return { albumArt: null, previewUrl: null };
-    }
-
-    const data = await response.json();
-    
-    if (data.tracks?.items?.length > 0) {
-      const track = data.tracks.items[0];
-      const albumArt = track.album?.images?.length > 0 
-        ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
-        : null;
+      const data = await response.json();
       
-      const previewUrl = track.preview_url;
-      console.log(`🎧 Found track "${track.name}" by "${track.artists[0].name}" - Preview: ${previewUrl ? 'Available' : 'Not Available'}`);
-      
-      return { 
-        albumArt, 
-        previewUrl: previewUrl || null 
-      };
+      if (data.tracks?.items?.length > 0) {
+        // Prioritize tracks that have preview URLs
+        const tracksWithPreviews = data.tracks.items.filter((track: any) => track.preview_url);
+        const trackToUse = tracksWithPreviews.length > 0 ? tracksWithPreviews[0] : data.tracks.items[0];
+        
+        const albumArt = trackToUse.album?.images?.length > 0 
+          ? (trackToUse.album.images.find((img: any) => img.width === 300) || trackToUse.album.images[0]).url
+          : null;
+        
+        const previewUrl = trackToUse.preview_url;
+        console.log(`🎧 Found track "${trackToUse.name}" by "${trackToUse.artists[0].name}" - Preview: ${previewUrl ? 'Available' : 'Not Available'}`);
+        
+        if (previewUrl || query === title) { // Accept if has preview or it's our last attempt
+          return { 
+            albumArt, 
+            previewUrl: previewUrl || null 
+          };
+        }
+      }
     }
 
     console.log(`❌ No Spotify results found for "${title}" by "${artist}"`);
