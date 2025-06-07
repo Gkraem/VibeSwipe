@@ -383,8 +383,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (req.session as any).spotifyAccessToken = tokenData.access_token;
       (req.session as any).spotifyUserId = String(userId);
       
-      // Redirect back to the app
-      res.redirect('/?spotify_connected=true');
+      // Mobile-friendly redirect with proper window handling
+      const userAgent = req.get('User-Agent') || '';
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      if (isMobile) {
+        // For mobile: redirect to app with success indicator and close any popup
+        res.send(`
+          <html>
+            <head>
+              <title>Spotify Connected</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body { 
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  text-align: center; 
+                  padding: 40px 20px; 
+                  background: linear-gradient(135deg, #1db954, #1ed760);
+                  color: white;
+                  margin: 0;
+                }
+                .success { font-size: 24px; margin-bottom: 20px; }
+                .message { font-size: 16px; opacity: 0.9; margin-bottom: 30px; }
+                .redirect { font-size: 14px; opacity: 0.8; }
+              </style>
+            </head>
+            <body>
+              <div class="success">✓ Spotify Connected!</div>
+              <div class="message">Redirecting back to your playlist...</div>
+              <div class="redirect">If not redirected automatically, <a href="/?spotify_connected=true" style="color: white;">click here</a></div>
+              <script>
+                // Close popup if opened in one, otherwise redirect
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'spotify_success' }, '*');
+                  window.close();
+                } else {
+                  window.location.href = '/?spotify_connected=true';
+                }
+              </script>
+            </body>
+          </html>
+        `);
+      } else {
+        // Desktop: simple redirect
+        res.redirect('/?spotify_connected=true');
+      }
     } catch (error) {
       console.error('Spotify callback error:', error);
       res.redirect('/?error=spotify_callback_failed');
