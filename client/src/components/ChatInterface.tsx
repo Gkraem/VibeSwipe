@@ -62,10 +62,19 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
     },
     onError: (error) => {
       console.error("Error sending message:", error);
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "I'm having trouble connecting right now, but I'd love to help you create an amazing playlist! Could you try again?"
-      }]);
+      
+      // Check if it's an OpenAI quota error
+      if (error.message.includes("OpenAI API quota exceeded") || error.message.includes("402")) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: "The OpenAI API quota has been exceeded. Please provide a valid API key with available credits to generate song recommendations. You can get one from https://platform.openai.com/api-keys"
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: "I'm having trouble connecting right now, but I'd love to help you create an amazing playlist! Could you try again?"
+        }]);
+      }
     },
   });
 

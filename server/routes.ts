@@ -143,7 +143,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ suggestions });
     } catch (error) {
       console.error("Error generating suggestions:", error);
-      res.status(500).json({ message: "Failed to generate song suggestions" });
+      if (error instanceof Error && error.message.includes("OpenAI API quota exceeded")) {
+        res.status(402).json({ 
+          message: "OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.",
+          requiresApiKey: true
+        });
+      } else {
+        res.status(500).json({ message: "Failed to generate song suggestions" });
+      }
     }
   });
 
@@ -159,7 +166,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ songs });
     } catch (error) {
       console.error("Error generating additional songs:", error);
-      res.status(500).json({ message: "Failed to generate songs" });
+      if (error instanceof Error && error.message.includes("OpenAI API quota exceeded")) {
+        res.status(402).json({ 
+          message: "OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.",
+          requiresApiKey: true
+        });
+      } else {
+        res.status(500).json({ message: "Failed to generate songs" });
+      }
     }
   });
 

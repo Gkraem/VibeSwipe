@@ -148,11 +148,21 @@ export default function Home() {
         }, 500);
         return;
       }
-      toast({
-        title: "Error",
-        description: "Failed to generate more songs. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check if it's an OpenAI quota error
+      if (error.message.includes("OpenAI API quota exceeded") || error.message.includes("402")) {
+        toast({
+          title: "API Quota Exceeded",
+          description: "Please provide a valid OpenAI API key with available credits.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to generate more songs. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
