@@ -325,7 +325,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle Spotify OAuth callback for playlist export
   app.get('/api/spotify/callback', async (req, res) => {
     try {
-      const { code, state: userId } = req.query;
+      const { code, state: userId, error } = req.query;
+      
+      console.log('=== SPOTIFY CALLBACK DEBUG ===');
+      console.log('Code:', code ? 'Present' : 'Missing');
+      console.log('State (userId):', userId);
+      console.log('Error:', error);
+      console.log('Full query:', req.query);
+      console.log('==============================');
+      
+      if (error) {
+        console.log('Spotify OAuth error:', error);
+        return res.redirect(`/?error=spotify_oauth_error&details=${error}`);
+      }
       
       if (!code) {
         return res.redirect('/?error=spotify_auth_failed');
@@ -352,8 +364,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tokenData = await tokenResponse.json();
       
-      if (!tokenData.access_token) {
-        return res.redirect('/?error=spotify_token_failed');
+      console.log('=== TOKEN RESPONSE DEBUG ===');
+      console.log('Token response status:', tokenResponse.status);
+      console.log('Token response ok:', tokenResponse.ok);
+      console.log('Token data:', tokenData);
+      console.log('===========================');
+      
+      if (!tokenResponse.ok || !tokenData.access_token) {
+        console.log('Token exchange failed:', tokenData);
+        return res.redirect(`/?error=spotify_token_failed&details=${JSON.stringify(tokenData)}`);
       }
 
       // Store the Spotify access token temporarily in the user session
