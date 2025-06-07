@@ -1,8 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Music, Sparkles, Heart, Shuffle } from "lucide-react";
+import { Music, Sparkles, Heart, Shuffle, Smartphone } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function Landing() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const handleLogin = () => {
     window.location.href = '/api/login';
   };
@@ -49,6 +61,28 @@ export default function Landing() {
             <Sparkles className="mr-2" />
             Start Creating Playlists
           </Button>
+
+          {/* Mobile Login Instructions */}
+          {isMobile && (
+            <div className="mt-8 max-w-md mx-auto">
+              <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <Smartphone className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                        Mobile Login Tip
+                      </p>
+                      <p className="text-blue-700 dark:text-blue-300">
+                        After signing in with Spotify, you may need to manually navigate back to this page. 
+                        Simply return to your browser and refresh this page if needed.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
 
