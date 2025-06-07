@@ -51,11 +51,13 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
   }, [messages]);
 
   useEffect(() => {
-    if (onReset) {
-      window.addEventListener('resetChat', resetChat);
-      return () => window.removeEventListener('resetChat', resetChat);
-    }
-  }, [onReset]);
+    const handleReset = () => {
+      resetChat();
+    };
+    
+    window.addEventListener('resetChat', handleReset);
+    return () => window.removeEventListener('resetChat', handleReset);
+  }, []);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
