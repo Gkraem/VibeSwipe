@@ -303,10 +303,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initiate Spotify OAuth for playlist export
   app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
+    // Use the correct Replit domain format
+    const host = req.get('host');
+    const redirectUri = `https://${host}/api/spotify/callback`;
+    
+    console.log('=== SPOTIFY AUTH DEBUG ===');
+    console.log('Host:', host);
+    console.log('Redirect URI:', redirectUri);
+    console.log('==========================');
+    
     const spotifyAuthUrl = `https://accounts.spotify.com/authorize?` +
       `client_id=${process.env.SPOTIFY_CLIENT_ID}&` +
       `response_type=code&` +
-      `redirect_uri=${encodeURIComponent(`${req.protocol}://${req.get('host')}/api/spotify/callback`)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=playlist-modify-public playlist-modify-private&` +
       `state=${req.user.id}`;
     
@@ -323,6 +332,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Exchange code for access token
+      const host = req.get('host');
+      const redirectUri = `https://${host}/api/spotify/callback`;
+      
+      console.log('Token exchange redirect URI:', redirectUri);
+      
       const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
@@ -332,7 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code: code as string,
-          redirect_uri: `${req.protocol}://${req.get('host')}/api/spotify/callback`
+          redirect_uri: redirectUri
         })
       });
 
