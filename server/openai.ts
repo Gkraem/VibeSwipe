@@ -333,6 +333,21 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
   }
 }
 
+// Helper function to get random album art
+function getRandomAlbumArt(): string {
+  const albumArts = [
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300", 
+    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1520637836862-4d197d17c50a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1517230878791-4d28214057c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
+  ];
+  return albumArts[Math.floor(Math.random() * albumArts.length)];
+}
+
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
   try {
     const response = await openai.chat.completions.create({
