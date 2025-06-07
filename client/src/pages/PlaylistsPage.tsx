@@ -107,7 +107,7 @@ export default function PlaylistsPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
         <Navigation />
         
-        <div className="p-4 pb-20 lg:pb-4">
+        <div className="p-4 pb-20">
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center justify-between mb-8">
               <Button 
@@ -192,7 +192,7 @@ export default function PlaylistsPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       <Navigation />
       
-      <div className="p-4 pb-20 lg:pb-4">
+      <div className="p-4 pb-20">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">My Playlists</h1>
@@ -218,14 +218,14 @@ export default function PlaylistsPage() {
                       key={playlist.id}
                       className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-800/50 transition-colors border border-gray-700/50"
                     >
-                      <div className="flex items-center space-x-4 flex-1">
-                        <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-400/20 rounded-lg flex items-center justify-center border border-green-500/30">
+                      <div className="flex items-center space-x-4 flex-1 min-w-0">
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-400/20 rounded-lg flex items-center justify-center border border-green-500/30 flex-shrink-0">
                           <Music className="h-6 w-6 text-green-400" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 pr-4">
                           <h3 className="font-medium text-white truncate">{playlist.title}</h3>
                           {playlist.description && (
-                            <p className="text-sm text-gray-400 truncate">{playlist.description}</p>
+                            <p className="text-sm text-gray-400 line-clamp-2 break-words">{playlist.description}</p>
                           )}
                           <p className="text-xs text-gray-500 mt-1">
                             Created {playlist.createdAt ? new Date(playlist.createdAt).toLocaleDateString() : 'Unknown date'}

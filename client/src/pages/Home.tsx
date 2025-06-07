@@ -323,7 +323,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-6 max-w-4xl pb-20 lg:pb-6">
+      <main className="container mx-auto px-4 py-6 max-w-4xl pb-20">
         {/* Conversational Interface */}
         <div className="mb-8">
           <ChatInterface onSuggestionsGenerated={handleSuggestionsGenerated} />
