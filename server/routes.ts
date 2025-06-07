@@ -295,14 +295,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get Spotify authorization URL for playlist export
-  app.get('/api/spotify/auth-url', isAuthenticated, (req, res) => {
+  app.get('/api/spotify/auth-url', isAuthenticated, (req: any, res) => {
     const scopes = ['playlist-modify-public', 'playlist-modify-private'];
     const authUrl = `https://accounts.spotify.com/authorize?` +
       `response_type=code&` +
       `client_id=${process.env.SPOTIFY_CLIENT_ID}&` +
       `scope=${encodeURIComponent(scopes.join(' '))}&` +
       `redirect_uri=${encodeURIComponent(`${req.protocol}://${req.get('host')}/api/spotify/callback`)}&` +
-      `state=${req.user.id}`;
+      `state=${req.user?.id || ''}`;
     
     res.json({ authUrl });
   });
@@ -310,7 +310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Spotify callback for playlist export
   app.get('/api/spotify/callback', async (req, res) => {
     try {
-      const { code, state: userId } = req.query;
+      const code = typeof req.query.code === 'string' ? req.query.code : '';
+      const userId = typeof req.query.state === 'string' ? req.query.state : '';
       
       if (!code || !userId) {
         return res.redirect('/?error=spotify_auth_failed');
@@ -325,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         body: new URLSearchParams({
           grant_type: 'authorization_code',
-          code: code as string,
+          code: code,
           redirect_uri: `${req.protocol}://${req.get('host')}/api/spotify/callback`
         })
       });
@@ -337,8 +338,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Store the access token temporarily in session for the export
-      req.session.spotifyAccessToken = tokenData.access_token;
-      req.session.userId = userId;
+      if (req.session) {
+        req.session.spotifyAccessToken = tokenData.access_token;
+        req.session.userId = userId;
+      }
 
       // Redirect back to the app with success indicator
       res.redirect('/?spotify_connected=true');

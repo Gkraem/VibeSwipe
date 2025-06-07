@@ -12,6 +12,7 @@ import type { Song } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Home() {
+  const { toast } = useToast();
   const [suggestions, setSuggestions] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
@@ -24,6 +25,19 @@ export default function Home() {
     songs: Song[];
     spotifyUrl?: string;
   } | null>(null);
+
+  // Check for Spotify callback success on page load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('spotify_connected') === 'true') {
+      toast({
+        title: "Spotify Connected!",
+        description: "You can now export your playlist to Spotify.",
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
 
   const updatePlaylistTitleMutation = useMutation({
     mutationFn: async ({ id, title }: { id: number; title: string }) => {
@@ -45,7 +59,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }
@@ -56,7 +70,6 @@ export default function Home() {
       });
     },
   });
-  const { toast } = useToast();
 
   const swipeMutation = useMutation({
     mutationFn: async ({ songId, action }: { songId: string; action: "like" | "skip" }) => {
@@ -74,7 +87,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }
@@ -111,7 +124,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }
@@ -123,7 +136,7 @@ export default function Home() {
     },
   });
 
-  const generateMoreSongsMutation = useMutation({
+  const generateSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
       // Start progress simulation
       setGenerationProgress(0);
@@ -168,7 +181,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }
@@ -235,115 +248,111 @@ export default function Home() {
     if (generatedPlaylist) {
       const element = document.getElementById('generated-playlist');
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
   }, [generatedPlaylist]);
 
+  const handleGenerateMoreSongs = () => {
+    if (!originalPrompt) return;
+    
+    const excludeIds = suggestions.map(song => song.id);
+    generateSongsMutation.mutate({ 
+      prompt: originalPrompt, 
+      excludeIds 
+    });
+  };
+
+  const handleUpdateTitle = (title: string) => {
+    if (generatedPlaylist?.id) {
+      updatePlaylistTitleMutation.mutate({ id: generatedPlaylist.id, title });
+    }
+  };
+
+  const handleSpotifyExport = (spotifyUrl: string) => {
+    setGeneratedPlaylist(prev => prev ? { ...prev, spotifyUrl } : null);
+  };
+
+  const showSwipeInterface = suggestions.length > 0 && currentIndex < suggestions.length;
+  const showGenerateButton = likedSongs.length >= 3 && currentIndex >= suggestions.length;
+  const showMoreSongsButton = suggestions.length > 0 && currentIndex >= suggestions.length - 5;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-6 max-w-4xl pb-20 lg:pb-6">
-        {/* Conversational Interface */}
-        <div className="mb-8">
-          <ChatInterface onSuggestionsGenerated={handleSuggestionsGenerated} />
-        </div>
-
-        {/* Swipe Interface */}
-        {suggestions.length > 0 && (
-          <div className="mb-8">
-            <SwipeInterface
-              songs={suggestions}
-              onSwipe={handleSwipe}
-              currentIndex={currentIndex}
-              likedCount={likedSongs.length}
-            />
-          </div>
-        )}
-
-        {/* Generate More Songs Button */}
-        {currentIndex >= suggestions.length && suggestions.length > 0 && (
-          <div className="mb-6 text-center">
-            <Button
-              onClick={() => {
-                const excludeIds = suggestions.map(s => s.id);
-                const prompt = originalPrompt || "Generate more music recommendations";
-                generateMoreSongsMutation.mutate({ prompt, excludeIds });
-              }}
-              disabled={generateMoreSongsMutation.isPending}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
-            >
-              {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 25 More Songs"}
-            </Button>
-            {generateMoreSongsMutation.isPending && generationProgress > 0 && (
-              <div className="mt-4 max-w-sm mx-auto space-y-2">
-                <Progress value={generationProgress} className="w-full h-2" />
-                <p className="text-sm text-gray-400">{Math.round(generationProgress)}% complete</p>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Chat & Swipe */}
+          <div className="space-y-6">
+            {!showSwipeInterface && (
+              <ChatInterface onSuggestionsGenerated={handleSuggestionsGenerated} />
+            )}
+            
+            {showSwipeInterface && (
+              <div className="space-y-6">
+                <SwipeInterface
+                  songs={suggestions}
+                  onSwipe={handleSwipe}
+                  currentIndex={currentIndex}
+                  likedCount={likedSongs.length}
+                />
+                
+                {showMoreSongsButton && (
+                  <div className="text-center">
+                    <Button
+                      onClick={handleGenerateMoreSongs}
+                      disabled={generateSongsMutation.isPending}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium"
+                    >
+                      {generateSongsMutation.isPending ? "Generating..." : "Generate More Songs"}
+                    </Button>
+                    {generationProgress > 0 && (
+                      <div className="mt-4">
+                        <Progress value={generationProgress} className="w-full max-w-md mx-auto" />
+                        <p className="text-sm text-gray-400 mt-2">Generating new songs... {Math.round(generationProgress)}%</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {showGenerateButton && (
+                  <div className="text-center">
+                    <Button
+                      onClick={handleGeneratePlaylist}
+                      disabled={createPlaylistMutation.isPending}
+                      size="lg"
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-emerald-500 hover:to-green-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg"
+                    >
+                      {createPlaylistMutation.isPending ? "Creating Playlist..." : `Generate Playlist (${likedSongs.length} songs)`}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-
-        {/* Playlist Generation Button */}
-        {likedSongs.length > 0 && !generatedPlaylist && currentIndex >= suggestions.length && (
-          <div className="mb-8">
-            <PlaylistDisplay
-              songs={[]}
-              onGeneratePlaylist={handleGeneratePlaylist}
-              isGenerating={createPlaylistMutation.isPending}
-            />
-          </div>
-        )}
-
-        {/* Generated Playlist */}
-        {generatedPlaylist && (
-          <div id="generated-playlist" className="mb-8">
-            <PlaylistDisplay
-              songs={generatedPlaylist.songs}
-              title={generatedPlaylist.title}
-              description={generatedPlaylist.description}
-              playlistId={generatedPlaylist.id}
-              editable={true}
-              spotifyUrl={generatedPlaylist.spotifyUrl}
-              onUpdateTitle={(newTitle) => {
-                if (generatedPlaylist.id) {
-                  updatePlaylistTitleMutation.mutate({ id: generatedPlaylist.id, title: newTitle });
-                }
-              }}
-              onSpotifyExport={(spotifyUrl) => {
-                setGeneratedPlaylist(prev => prev ? { ...prev, spotifyUrl } : null);
-              }}
-            />
-          </div>
-        )}
-
-        {/* Show liked songs preview if no playlist generated yet */}
-        {likedSongs.length > 0 && !generatedPlaylist && currentIndex < suggestions.length && (
-          <div className="mb-8">
-            <div className="text-center p-6 bg-gray-800/50 rounded-xl border border-gray-700">
-              <h4 className="text-lg font-bold text-white mb-2">Songs You've Liked</h4>
-              <p className="text-gray-400 mb-4">{likedSongs.length} songs ready for your playlist</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {likedSongs.slice(0, 5).map((song) => (
-                  <span 
-                    key={song.id}
-                    className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm"
-                  >
-                    {song.title}
-                  </span>
-                ))}
-                {likedSongs.length > 5 && (
-                  <span className="bg-gray-600 text-gray-300 px-3 py-1 rounded-full text-sm">
-                    +{likedSongs.length - 5} more
-                  </span>
-                )}
+          
+          {/* Right Column - Generated Playlist */}
+          <div className="space-y-6">
+            {generatedPlaylist && (
+              <div id="generated-playlist">
+                <PlaylistDisplay
+                  songs={generatedPlaylist.songs}
+                  title={generatedPlaylist.title}
+                  description={generatedPlaylist.description}
+                  playlistId={generatedPlaylist.id}
+                  onUpdateTitle={handleUpdateTitle}
+                  editable={true}
+                  spotifyUrl={generatedPlaylist.spotifyUrl}
+                  onSpotifyExport={handleSpotifyExport}
+                />
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </main>
-
+        </div>
+      </div>
+      
       <BottomNavigation />
     </div>
   );
