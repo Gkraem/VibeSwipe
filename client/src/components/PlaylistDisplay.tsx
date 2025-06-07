@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Play, Music, ExternalLink, Sparkles, Edit3, Check, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,6 +17,7 @@ interface PlaylistDisplayProps {
   description?: string;
   onGeneratePlaylist?: () => void;
   isGenerating?: boolean;
+  generationProgress?: number;
   playlistId?: number;
   onUpdateTitle?: (title: string) => void;
   editable?: boolean;
@@ -29,6 +31,7 @@ export function PlaylistDisplay({
   description,
   onGeneratePlaylist,
   isGenerating = false,
+  generationProgress = 0,
   playlistId,
   onUpdateTitle,
   editable = false,

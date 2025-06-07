@@ -4,6 +4,7 @@ import { ChatInterface } from "@/components/ChatInterface";
 import { SwipeInterface } from "@/components/SwipeCard";
 import { PlaylistDisplay } from "@/components/PlaylistDisplay";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -275,6 +276,12 @@ export default function Home() {
             >
               {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 25 More Songs"}
             </Button>
+            {generateMoreSongsMutation.isPending && generationProgress > 0 && (
+              <div className="mt-4 max-w-sm mx-auto space-y-2">
+                <Progress value={generationProgress} className="w-full h-2" />
+                <p className="text-sm text-gray-400">{Math.round(generationProgress)}% complete</p>
+              </div>
+            )}
           </div>
         )}
 
