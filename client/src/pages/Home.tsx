@@ -20,6 +20,38 @@ export default function Home() {
     description: string;
     songs: Song[];
   } | null>(null);
+
+  const updatePlaylistTitleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: number; title: string }) => {
+      const response = await apiRequest("PATCH", `/api/playlists/${id}`, { title });
+      return await response.json();
+    },
+    onSuccess: (updatedPlaylist) => {
+      setGeneratedPlaylist(prev => prev ? { ...prev, title: updatedPlaylist.title } : null);
+      toast({
+        title: "Playlist Updated",
+        description: "Your playlist title has been saved.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Update Failed",
+        description: "Failed to update playlist title. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
   const { toast } = useToast();
 
   const swipeMutation = useMutation({
@@ -175,6 +207,12 @@ export default function Home() {
               title={generatedPlaylist.title}
               description={generatedPlaylist.description}
               playlistId={generatedPlaylist.id}
+              editable={true}
+              onUpdateTitle={(newTitle) => {
+                if (generatedPlaylist.id) {
+                  updatePlaylistTitleMutation.mutate({ id: generatedPlaylist.id, title: newTitle });
+                }
+              }}
             />
           </div>
         )}

@@ -212,6 +212,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/playlists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const playlistId = parseInt(req.params.id);
+      const { title } = req.body;
+      
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ message: "Title is required" });
+      }
+
+      const playlist = await storage.getPlaylist(playlistId);
+      if (!playlist || playlist.userId !== userId) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      const updatedPlaylist = await storage.updatePlaylist(playlistId, { title });
+      res.json(updatedPlaylist);
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+      res.status(500).json({ message: "Failed to update playlist" });
+    }
+  });
+
   // Spotify export route
   app.post('/api/playlists/:id/export-spotify', isAuthenticated, async (req: any, res) => {
     try {

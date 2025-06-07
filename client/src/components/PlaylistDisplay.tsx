@@ -1,11 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Music, ExternalLink, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Play, Music, ExternalLink, Sparkles, Edit3, Check, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useState } from "react";
 import type { Song } from "@shared/schema";
 
 interface PlaylistDisplayProps {
@@ -15,6 +17,8 @@ interface PlaylistDisplayProps {
   onGeneratePlaylist?: () => void;
   isGenerating?: boolean;
   playlistId?: number;
+  onUpdateTitle?: (title: string) => void;
+  editable?: boolean;
 }
 
 export function PlaylistDisplay({ 
@@ -23,9 +27,13 @@ export function PlaylistDisplay({
   description,
   onGeneratePlaylist,
   isGenerating = false,
-  playlistId
+  playlistId,
+  onUpdateTitle,
+  editable = false
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
 
   const exportToSpotifyMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -65,6 +73,18 @@ export function PlaylistDisplay({
     if (playlistId) {
       exportToSpotifyMutation.mutate(playlistId);
     }
+  };
+
+  const handleSaveTitle = () => {
+    if (onUpdateTitle && editedTitle !== title) {
+      onUpdateTitle(editedTitle || title);
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedTitle(title);
+    setIsEditingTitle(false);
   };
   const totalDuration = songs.reduce((sum, song) => sum + (song.duration || 0), 0);
   
@@ -117,7 +137,51 @@ export function PlaylistDisplay({
       <CardContent className="p-6">
         {/* Header */}
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold mb-2 text-white">{title}</h3>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="text-xl font-bold bg-gray-800 border-gray-600 text-white text-center max-w-md"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTitle();
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveTitle}
+                  className="bg-green-600 hover:bg-green-700 text-white p-2"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-white p-2"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-bold text-white">{title}</h3>
+                {editable && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsEditingTitle(true)}
+                    className="text-gray-400 hover:text-white p-2"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           {description && (
             <p className="text-gray-400 mb-4">{description}</p>
           )}
