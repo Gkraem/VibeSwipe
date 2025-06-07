@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat routes
   app.post('/api/chat/send', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { message, conversationId } = req.body;
 
       if (!message) {
@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/chat/conversations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conversations = await storage.getUserConversations(userId);
       res.json(conversations);
     } catch (error) {
@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/chat/conversation/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conversationId = parseInt(req.params.id);
       
       const conversation = await storage.getConversation(conversationId);
@@ -120,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Swipe tracking routes
   app.post('/api/swipe', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertSwipeHistorySchema.parse({
         ...req.body,
         userId,
@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/swipe/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const history = await storage.getUserSwipeHistory(userId);
       res.json(history);
     } catch (error) {
@@ -151,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Playlist routes
   app.post('/api/playlists', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { songs, originalPrompt } = req.body;
 
       if (!songs || !Array.isArray(songs) || songs.length === 0) {
@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/playlists', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const playlists = await storage.getUserPlaylists(userId);
       res.json(playlists);
     } catch (error) {
@@ -196,7 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/playlists/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const playlistId = parseInt(req.params.id);
       
       const playlist = await storage.getPlaylist(playlistId);

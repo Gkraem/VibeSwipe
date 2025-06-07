@@ -52,15 +52,15 @@ export async function setupAuth(app: Express) {
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
         callbackURL,
       },
-      async (accessToken, refreshToken, expires_in, profile, done) => {
+      async (accessToken: string, refreshToken: string, expires_in: number, profile: any, done: any) => {
         try {
           // Store user data from Spotify profile
           const userData = {
             id: profile.id,
-            email: profile.emails?.[0]?.value || null,
+            email: profile._json?.email || null,
             firstName: profile.displayName?.split(" ")[0] || null,
             lastName: profile.displayName?.split(" ").slice(1).join(" ") || null,
-            profileImageUrl: profile.photos?.[0]?.value || null,
+            profileImageUrl: profile._json?.images?.[0]?.url || null,
           };
 
           const user = await storage.upsertUser(userData);
@@ -91,7 +91,7 @@ export async function setupAuth(app: Express) {
       const user = await storage.getUser(id);
       done(null, user);
     } catch (error) {
-      done(error, null);
+      done(error as Error, undefined);
     }
   });
 
