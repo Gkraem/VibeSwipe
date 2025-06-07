@@ -383,10 +383,12 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
     
     // If we don't have enough real tracks, supplement with curated recommendations
     if (allSongs.length < 50) {
+      console.log(`Found ${allSongs.length} songs from search, getting additional curated tracks...`);
       const additionalSongs = await getCuratedSpotifyTracks(prompt, 50 - allSongs.length, seenTracks, excludeIds, spotifyToken);
       allSongs.push(...additionalSongs);
     }
     
+    console.log(`Final song count: ${allSongs.length} songs with preview URLs`);
     return allSongs.slice(0, 50);
     
   } catch (error) {

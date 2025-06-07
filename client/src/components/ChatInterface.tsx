@@ -44,6 +44,9 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
       return await response.json();
     },
     onSuccess: (data) => {
+      console.log("Chat API response:", data);
+      console.log("Suggestions received:", data.suggestions?.length || 0);
+      
       setConversationId(data.conversationId);
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -51,7 +54,10 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
       }]);
       
       if (data.suggestions && data.suggestions.length > 0) {
+        console.log("Calling onSuggestionsGenerated with", data.suggestions.length, "songs");
         onSuggestionsGenerated(data.suggestions, currentMessage);
+      } else {
+        console.log("No suggestions in response");
       }
     },
     onError: (error) => {

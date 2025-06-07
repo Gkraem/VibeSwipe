@@ -119,6 +119,8 @@ export default function Home() {
   });
 
   const handleSuggestionsGenerated = (songs: Song[], prompt: string) => {
+    console.log("handleSuggestionsGenerated called with:", songs.length, "songs");
+    console.log("First few songs:", songs.slice(0, 3));
     setSuggestions(songs);
     setCurrentIndex(0);
     setLikedSongs([]);

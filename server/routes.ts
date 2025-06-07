@@ -61,6 +61,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: aiResponse.message,
       });
 
+      console.log(`AI Response: ${aiResponse.message}`);
+      console.log(`Suggestions count: ${aiResponse.suggestions ? aiResponse.suggestions.length : 0}`);
+      
       res.json({
         conversationId: currentConversationId,
         message: aiResponse.message,
