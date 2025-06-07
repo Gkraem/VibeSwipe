@@ -7,16 +7,25 @@ import { useState, useEffect } from "react";
 
 export function Navigation() {
   const { user } = useAuth();
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    // Check localStorage first, then default to dark
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true;
+  });
 
   useEffect(() => {
-    // Initialize dark mode
-    document.documentElement.classList.add('dark');
-  }, []);
+    // Apply theme on mount and when changed
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
   };
 
   const handleLogout = () => {
@@ -24,14 +33,14 @@ export function Navigation() {
   };
 
   return (
-    <nav className="flex items-center justify-between p-4 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-800">
+    <nav className="flex items-center justify-between p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full flex items-center justify-center">
           <Music className="text-white text-lg" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white">Vibe Swipe</h1>
-          <p className="text-xs text-gray-400">AI Playlist Generator</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Vibe Swipe</h1>
+          <p className="text-xs text-gray-600 dark:text-gray-400">AI Playlist Generator</p>
         </div>
       </div>
       
@@ -40,7 +49,7 @@ export function Navigation() {
           variant="ghost" 
           size="sm" 
           onClick={toggleTheme}
-          className="text-gray-300 hover:text-white"
+          className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
@@ -48,20 +57,20 @@ export function Navigation() {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2 text-gray-300 hover:text-white">
+              <Button variant="ghost" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
                 <Avatar className="w-8 h-8">
-                  <AvatarImage src={user.profileImageUrl || ""} alt={user.firstName || "User"} />
+                  <AvatarImage src={(user as any)?.profileImageUrl || ""} alt={(user as any)?.firstName || "User"} />
                   <AvatarFallback>
                     <User className="h-4 w-4" />
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm">
-                  {user.firstName || user.email?.split('@')[0] || 'User'}
+                  {(user as any)?.firstName || (user as any)?.email?.split('@')[0] || 'User'}
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
-              <DropdownMenuItem onClick={handleLogout} className="text-gray-300 hover:text-white focus:text-white">
+            <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+              <DropdownMenuItem onClick={handleLogout} className="text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white focus:text-gray-700 dark:focus:text-white">
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </DropdownMenuItem>

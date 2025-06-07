@@ -109,7 +109,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
       {/* Hidden audio element for preview */}
       <audio ref={audioRef} preload="metadata" />
       
-      <Card className={`w-80 h-96 bg-gray-900 border-gray-700 ${isActive ? "shadow-2xl shadow-green-500/20" : ""}`}>
+      <Card className={`w-80 h-96 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 ${isActive ? "shadow-2xl shadow-green-500/20" : ""}`}>
         <CardContent className="p-6 h-full flex flex-col">
           {/* Album Art */}
           <div className="relative mb-4">
@@ -250,7 +250,6 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
           </div>
         ) : currentIndex >= songs.length ? (
           <div className="text-center">
-            <h4 className="text-xl font-bold text-white mb-2">Great job! 🎉</h4>
             <p className="text-gray-400 mb-4">You've gone through all the suggestions.</p>
             <p className="text-green-400">Liked {likedCount} songs</p>
           </div>
