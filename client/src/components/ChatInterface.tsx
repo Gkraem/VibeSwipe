@@ -107,7 +107,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex items-start space-x-3 chat-message ${
+              className={`flex items-start space-x-4 chat-message ${
                 message.role === "user" ? "justify-end" : ""
               }`}
             >

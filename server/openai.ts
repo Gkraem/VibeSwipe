@@ -504,16 +504,48 @@ async function getAlbumArtFromSpotify(title: string, artist: string): Promise<st
     const token = await getSpotifyClientToken();
     if (!token) return "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music";
     
-    const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
-    const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    // Try multiple search strategies for better match rates
+    const searchQueries = [
+      `track:"${title}" artist:"${artist}"`,
+      `"${title}" "${artist}"`,
+      `${title} ${artist}`,
+      title // fallback to just the title
+    ];
+    
+    for (const query of searchQueries) {
+      const encodedQuery = encodeURIComponent(query);
+      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodedQuery}&type=track&limit=3`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.tracks?.items?.[0]?.album?.images?.[0]) {
-        return data.tracks.items[0].album.images[0].url;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tracks?.items?.length > 0) {
+          // Look for exact or close matches
+          for (const track of data.tracks.items) {
+            const trackTitle = track.name.toLowerCase();
+            const trackArtist = track.artists[0]?.name.toLowerCase();
+            const searchTitle = title.toLowerCase();
+            const searchArtist = artist.toLowerCase();
+            
+            // Check for reasonable match
+            if ((trackTitle.includes(searchTitle) || searchTitle.includes(trackTitle)) &&
+                (trackArtist.includes(searchArtist) || searchArtist.includes(trackArtist))) {
+              if (track.album?.images?.[0]) {
+                return track.album.images[0].url;
+              }
+            }
+          }
+          
+          // If no exact match, use first result if it has an image
+          if (data.tracks.items[0]?.album?.images?.[0]) {
+            return data.tracks.items[0].album.images[0].url;
+          }
+        }
       }
+      
+      // Small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   } catch (error) {
     console.log(`Could not fetch album art for ${title} by ${artist}`);

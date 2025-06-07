@@ -196,18 +196,18 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
           
           {/* Action Buttons (only show on active card) */}
           {isActive && (
-            <div className="flex justify-center space-x-6 mt-4">
+            <div className="flex justify-center items-center space-x-6 mt-4">
               <Button
                 size="sm"
                 onClick={() => handleButtonSwipe("left")}
-                className="w-12 h-12 rounded-full bg-red-500/20 hover:bg-red-500/40 border-0 hover:scale-110 transition-all"
+                className="w-14 h-14 rounded-full bg-red-500/20 hover:bg-red-500/40 border-0 hover:scale-110 transition-all flex items-center justify-center"
               >
-                <X className="h-5 w-5 text-red-400" />
+                <X className="h-6 w-6 text-red-400" />
               </Button>
               <Button
                 size="sm" 
                 onClick={() => handleButtonSwipe("right")}
-                className="w-14 h-14 rounded-full bg-green-500/20 hover:bg-green-500/40 border-0 hover:scale-110 transition-all"
+                className="w-14 h-14 rounded-full bg-green-500/20 hover:bg-green-500/40 border-0 hover:scale-110 transition-all flex items-center justify-center"
               >
                 <Heart className="h-6 w-6 text-green-500" />
               </Button>
