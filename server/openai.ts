@@ -307,20 +307,28 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
   } catch (error) {
     console.error("OpenAI API error:", error);
     
-    // Return demo suggestions for indie study music
+    // Return demo suggestions based on user input
     if (prompt.toLowerCase().includes('indie') || prompt.toLowerCase().includes('study')) {
       return {
         message: "Perfect! I've got some great indie tracks for studying. Let me show you some recommendations to swipe through:",
-        suggestions: DEMO_SONGS.filter(song => 
+        suggestions: MOCK_SONGS.filter((song: Song) => 
           song.genres.includes('Indie') || 
           song.genres.includes('Alternative') ||
-          song.energy < 0.6
+          (song.energy !== undefined && song.energy < 0.6)
         ).slice(0, 10)
       };
     }
     
+    // For any other music request, provide a sample of songs
+    if (prompt.toLowerCase().includes('music') || prompt.toLowerCase().includes('song') || prompt.toLowerCase().includes('playlist')) {
+      return {
+        message: "Great! I've curated some tracks based on your request. Start swiping to build your perfect playlist:",
+        suggestions: MOCK_SONGS.slice(0, 12)
+      };
+    }
+    
     return {
-      message: "I'm having trouble connecting right now, but I'd love to help you create an amazing playlist! Could you tell me what kind of vibe you're going for?",
+      message: "I'd love to help you create an amazing playlist! Try describing something like 'indie for studying' or 'upbeat workout music' to get started.",
     };
   }
 }
