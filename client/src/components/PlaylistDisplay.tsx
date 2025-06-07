@@ -8,7 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Song } from "@shared/schema";
 
 interface PlaylistDisplayProps {
@@ -39,6 +39,22 @@ export function PlaylistDisplay({
   onSpotifyExport
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
+
+  // Listen for Spotify export trigger from Home page
+  useEffect(() => {
+    const handleSpotifyExportTrigger = (event: CustomEvent) => {
+      const { playlistId: triggerPlaylistId } = event.detail;
+      if (playlistId === triggerPlaylistId) {
+        exportToSpotifyMutation.mutate(playlistId);
+      }
+    };
+
+    window.addEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
+    
+    return () => {
+      window.removeEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
+    };
+  }, [playlistId, exportToSpotifyMutation]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
 
@@ -115,29 +131,17 @@ export function PlaylistDisplay({
 
   const handleSpotifyAuth = async () => {
     try {
+      // Store playlist ID for after auth redirect
+      if (playlistId) {
+        localStorage.setItem('pendingSpotifyExport', playlistId.toString());
+      }
+      
       // Get Spotify auth URL
       const response = await apiRequest("GET", "/api/spotify/auth");
       const data = await response.json();
       
-      // Open popup window
-      const popup = window.open(
-        data.authUrl,
-        'spotify-auth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
-      
-      // Poll for popup closure
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed);
-          // Retry export after auth
-          if (playlistId) {
-            setTimeout(() => {
-              exportToSpotifyMutation.mutate(playlistId);
-            }, 1000);
-          }
-        }
-      }, 1000);
+      // Redirect to Spotify auth (mobile-friendly)
+      window.location.href = data.authUrl;
       
     } catch (error) {
       toast({

@@ -58,6 +58,38 @@ export default function Home() {
   });
   const { toast } = useToast();
 
+  // Handle pending Spotify export after auth redirect
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const spotifyConnected = urlParams.get('spotify_connected');
+    const pendingExportId = localStorage.getItem('pendingSpotifyExport');
+    
+    if (spotifyConnected === 'true' && pendingExportId) {
+      // Clear the pending export
+      localStorage.removeItem('pendingSpotifyExport');
+      
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show success toast
+      toast({
+        title: "Spotify Connected!",
+        description: "Now exporting your playlist...",
+      });
+      
+      // Trigger the export
+      setTimeout(() => {
+        if (generatedPlaylist?.id?.toString() === pendingExportId) {
+          // Export current playlist
+          const exportEvent = new CustomEvent('triggerSpotifyExport', { 
+            detail: { playlistId: parseInt(pendingExportId) } 
+          });
+          window.dispatchEvent(exportEvent);
+        }
+      }, 1000);
+    }
+  }, [generatedPlaylist, toast]);
+
   const swipeMutation = useMutation({
     mutationFn: async ({ songId, action }: { songId: string; action: "like" | "skip" }) => {
       const response = await apiRequest("POST", "/api/swipe", {

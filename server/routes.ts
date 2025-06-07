@@ -383,28 +383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (req.session as any).spotifyAccessToken = tokenData.access_token;
       (req.session as any).spotifyUserId = String(userId);
       
-      // Redirect back to the app with success
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Spotify Connected</title>
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #191414; color: white; }
-            .success { color: #1db954; font-size: 24px; margin-bottom: 20px; }
-          </style>
-          <script>
-            setTimeout(() => {
-              window.close();
-            }, 2000);
-          </script>
-        </head>
-        <body>
-          <div class="success">✓ Spotify Connected!</div>
-          <p>You can now export your playlist. This window will close automatically.</p>
-        </body>
-        </html>
-      `);
+      // Redirect back to the app
+      res.redirect('/?spotify_connected=true');
     } catch (error) {
       console.error('Spotify callback error:', error);
       res.redirect('/?error=spotify_callback_failed');
