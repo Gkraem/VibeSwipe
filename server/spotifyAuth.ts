@@ -42,6 +42,10 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  console.log("Setting up Spotify auth with callback URL:", process.env.REPLIT_DOMAINS 
+    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/api/auth/spotify/callback`
+    : "/api/auth/spotify/callback");
+
   // Spotify Strategy
   passport.use(
     new SpotifyStrategy(
