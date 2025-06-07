@@ -324,24 +324,33 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
       messages: [
         {
           role: "system",
-          content: `You are a music expert curator. Generate exactly 40 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on major streaming platforms like Spotify. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
+          content: `You are a music expert curator with deep knowledge of Spotify's catalog. Generate exactly 40 high-quality song recommendations based on the user's request. 
+
+CRITICAL REQUIREMENTS:
+- ALL songs must be real tracks currently available on Spotify
+- Focus on popular, mainstream artists and well-known songs
+- Include both classic hits and recent popular releases
+- For each genre, include the most recognizable and streamed tracks
+- Double-check that artist names and song titles are exactly correct
+
+Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
 Example format:
 {
   "songs": [
     {
-      "title": "Someone Like You",
-      "artist": "Adele",
-      "album": "21",
-      "genres": ["pop", "soul"],
-      "energy": 0.3,
-      "valence": 0.2,
-      "duration": 285
+      "title": "Blinding Lights",
+      "artist": "The Weeknd",
+      "album": "After Hours",
+      "genres": ["pop", "synth-pop"],
+      "energy": 0.8,
+      "valence": 0.6,
+      "duration": 200
     }
   ]
 }
 
-Make sure all songs are real, popular tracks that are definitely available on Spotify. Avoid obscure or made-up songs.`
+For specific genres like Afro House, include established artists like Black Coffee, Major Lazer, Diplo, and recent viral tracks that are confirmed to be on Spotify. Always prioritize songs that have millions of streams and are from verified artists.`
         },
         {
           role: "user",
@@ -418,11 +427,11 @@ Make sure all songs are real, popular tracks that are definitely available on Sp
         messages: [
           {
             role: "system",
-            content: `Generate exactly ${additionalNeeded} more songs for the same request. Focus on very popular, mainstream tracks that are definitely available on Spotify. Return as JSON with "songs" array. Make sure all songs are real, popular tracks from well-known artists.`
+            content: `Generate exactly ${additionalNeeded} more songs for the same request. CRITICAL: Only include songs that are 100% confirmed to be on Spotify with proper metadata (album art and audio previews). Focus on chart-topping hits, verified artists, and songs with millions of streams. Return as JSON with "songs" array. Prioritize mainstream success over niche tracks.`
           },
           {
             role: "user",
-            content: `Generate ${additionalNeeded} additional songs for: ${prompt}`
+            content: `Generate ${additionalNeeded} additional verified Spotify tracks for: ${prompt}. Include only the most popular and well-known songs in this category.`
           }
         ],
         response_format: { type: "json_object" },
@@ -470,6 +479,31 @@ Make sure all songs are real, popular tracks that are definitely available on Sp
           };
           
           songs.push(song);
+        }
+      }
+    }
+    
+    // If we still don't have enough songs, use fallback popular tracks to fill the gap
+    if (songs.length < 25) {
+      console.log(`Still need ${25 - songs.length} songs after filtering, using fallback tracks...`);
+      const fallbackSongs = generateFallbackSongs(prompt, excludeIds).slice(0, 25 - songs.length);
+      
+      // Only add fallback songs that have both album art and preview URL
+      for (const fallbackSong of fallbackSongs) {
+        if (songs.length >= 25) break;
+        
+        const spotifyToken = await getSpotifyClientToken();
+        const spotifyData = spotifyToken 
+          ? await getSpotifyTrackData(fallbackSong.title, fallbackSong.artist, spotifyToken)
+          : { albumArt: null, previewUrl: null };
+        
+        if (spotifyData.albumArt && spotifyData.previewUrl) {
+          const enhancedSong: Song = {
+            ...fallbackSong,
+            albumArt: spotifyData.albumArt,
+            previewUrl: spotifyData.previewUrl
+          };
+          songs.push(enhancedSong);
         }
       }
     }
