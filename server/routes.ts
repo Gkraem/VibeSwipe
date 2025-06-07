@@ -627,9 +627,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let accessToken = user.spotifyAccessToken;
+      let spotifyUser;
 
-      // Get current Spotify user
-      const spotifyUser = await spotifyService.getCurrentUser(accessToken);
+      try {
+        // Try to get current Spotify user
+        spotifyUser = await spotifyService.getCurrentUser(accessToken);
+      } catch (error) {
+        // If token is invalid, try to refresh it
+        if (user.spotifyRefreshToken && (error instanceof Error && error.message.includes('Unauthorized'))) {
+          try {
+            console.log('Refreshing Spotify access token for user:', userId);
+            const tokenData = await spotifyService.refreshAccessToken(user.spotifyRefreshToken);
+            
+            // Update user with new tokens
+            await storage.updateUser(userId, {
+              spotifyAccessToken: tokenData.access_token,
+              spotifyRefreshToken: tokenData.refresh_token || user.spotifyRefreshToken
+            });
+            
+            accessToken = tokenData.access_token;
+            spotifyUser = await spotifyService.getCurrentUser(accessToken);
+          } catch (refreshError) {
+            console.error('Failed to refresh Spotify token:', refreshError);
+            return res.status(401).json({ 
+              message: "Spotify access expired. Please reconnect your Spotify account in Settings.",
+              requiresAuth: true
+            });
+          }
+        } else {
+          throw error;
+        }
+      }
 
       // Export playlist to Spotify
       const result = await spotifyService.exportPlaylistToSpotify(
@@ -652,9 +680,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error exporting to Spotify:", error);
-      if (error instanceof Error && error.message.includes('access_token')) {
+      if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('access_token'))) {
         res.status(401).json({ 
-          message: "Spotify access token expired. Please connect to Spotify again.",
+          message: "Spotify access expired. Please reconnect your Spotify account in Settings.",
           requiresAuth: true
         });
       } else {
