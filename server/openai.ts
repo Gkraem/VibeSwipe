@@ -328,57 +328,70 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
 
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
   try {
-    // Try AI generation first
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `Generate 50 unique song recommendations based on the user's vibe. Return JSON with this structure:
-          {
-            "songs": [
-              {
-                "id": "unique_id",
-                "title": "Song Title",
-                "artist": "Artist Name",
-                "album": "Album Name", 
-                "duration": 180,
-                "genres": ["Genre1", "Genre2"],
-                "energy": 0.7,
-                "valence": 0.6,
-                "tempo": 120
-              }
-            ]
-          }`
-        },
-        {
-          role: "user",
-          content: `Generate 50 songs for: "${prompt}"`
+    // Generate search queries based on the prompt
+    const searchQueries = generateSearchQueries(prompt);
+    const allSongs: Song[] = [];
+    const seenTracks = new Set<string>();
+    
+    // Get Spotify client credentials token for public search
+    const spotifyToken = await getSpotifyClientToken();
+    if (!spotifyToken) {
+      throw new Error("Unable to get Spotify access token");
+    }
+    
+    // Search Spotify for real tracks
+    const { spotifyService } = await import('./spotifyApi');
+    
+    for (const query of searchQueries) {
+      try {
+        const tracks = await spotifyService.searchTracks(spotifyToken, query, 10);
+        
+        for (const track of tracks) {
+          const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
+          
+          // Skip duplicates and excluded songs
+          if (seenTracks.has(trackKey) || excludeIds.includes(track.id)) {
+            continue;
+          }
+          
+          seenTracks.add(trackKey);
+          
+          const song: Song = {
+            id: track.id,
+            title: track.name,
+            artist: track.artists.map(a => a.name).join(', '),
+            album: track.album.name,
+            albumArt: track.album.images[0]?.url || getRandomAlbumArt(),
+            duration: Math.floor(track.duration_ms / 1000),
+            genres: determineGenresFromPrompt(prompt),
+            energy: Math.random() * 0.4 + 0.5, // Realistic energy range
+            valence: Math.random() * 0.6 + 0.3, // Realistic valence range  
+            tempo: Math.floor(Math.random() * 60) + 90, // 90-150 BPM
+            previewUrl: track.preview_url || undefined
+          };
+          
+          allSongs.push(song);
+          
+          if (allSongs.length >= 50) break;
         }
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    const generatedSongs = result.songs || [];
+        
+        if (allSongs.length >= 50) break;
+      } catch (searchError) {
+        console.error(`Error searching for "${query}":`, searchError);
+        continue;
+      }
+    }
     
-    const songs: Song[] = generatedSongs.map((song: any, index: number) => ({
-      id: song.id || `ai_${Date.now()}_${index}`,
-      title: song.title || "Unknown Song",
-      artist: song.artist || "Unknown Artist", 
-      album: song.album || "Unknown Album",
-      albumArt: getRandomAlbumArt(),
-      duration: song.duration || 180,
-      genres: Array.isArray(song.genres) ? song.genres : ["Pop"],
-      energy: typeof song.energy === 'number' ? song.energy : 0.5,
-      valence: typeof song.valence === 'number' ? song.valence : 0.5,
-      tempo: typeof song.tempo === 'number' ? song.tempo : 120,
-    }));
+    // If we don't have enough real tracks, supplement with curated recommendations
+    if (allSongs.length < 50) {
+      const additionalSongs = await getCuratedSpotifyTracks(prompt, 50 - allSongs.length, seenTracks, excludeIds, spotifyToken);
+      allSongs.push(...additionalSongs);
+    }
     
-    return songs.filter(song => !excludeIds.includes(song.id)).slice(0, 50);
+    return allSongs.slice(0, 50);
     
   } catch (error) {
-    console.error("AI generation failed, using intelligent fallback:", error);
+    console.error("Spotify search failed, using fallback:", error);
     return generateFallbackSongs(prompt, excludeIds);
   }
 }
@@ -396,6 +409,151 @@ function getRandomAlbumArt(): string {
     "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
   ];
   return albumArts[Math.floor(Math.random() * albumArts.length)];
+}
+
+// Get Spotify client credentials token for public API access
+async function getSpotifyClientToken(): Promise<string | null> {
+  try {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString('base64')}`
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (!response.ok) {
+      console.error('Failed to get Spotify token:', response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error('Error getting Spotify token:', error);
+    return null;
+  }
+}
+
+// Generate search queries for Spotify based on user prompt
+function generateSearchQueries(prompt: string): string[] {
+  const promptLower = prompt.toLowerCase();
+  const queries: string[] = [];
+  
+  // Genre-specific search terms
+  if (promptLower.includes('workout') || promptLower.includes('gym') || promptLower.includes('exercise')) {
+    queries.push('genre:electronic genre:hip-hop high energy', 'workout playlist', 'gym music', 'fitness motivation', 'cardio beats');
+  } else if (promptLower.includes('chill') || promptLower.includes('relax') || promptLower.includes('calm')) {
+    queries.push('genre:chill genre:lo-fi', 'chill out', 'relaxing music', 'ambient chill', 'study music');
+  } else if (promptLower.includes('indie') || promptLower.includes('alternative')) {
+    queries.push('genre:indie genre:alternative', 'indie rock', 'indie pop', 'alternative rock', 'indie folk');
+  } else if (promptLower.includes('electronic') || promptLower.includes('edm') || promptLower.includes('techno')) {
+    queries.push('genre:electronic genre:edm', 'house music', 'techno beats', 'dance music', 'electronic dance');
+  } else if (promptLower.includes('jazz') || promptLower.includes('blues') || promptLower.includes('smooth')) {
+    queries.push('genre:jazz genre:blues', 'smooth jazz', 'jazz standards', 'blues classics', 'contemporary jazz');
+  } else if (promptLower.includes('pop') || promptLower.includes('mainstream')) {
+    queries.push('genre:pop', 'top hits', 'popular music', 'chart toppers', 'mainstream pop');
+  } else if (promptLower.includes('rock') || promptLower.includes('metal')) {
+    queries.push('genre:rock genre:metal', 'classic rock', 'modern rock', 'alternative rock', 'indie rock');
+  } else {
+    // General popular music queries
+    queries.push('genre:pop', 'top hits 2023', 'popular songs', 'chart music', 'trending music');
+  }
+  
+  return queries;
+}
+
+// Determine genres based on prompt
+function determineGenresFromPrompt(prompt: string): string[] {
+  const promptLower = prompt.toLowerCase();
+  
+  if (promptLower.includes('workout') || promptLower.includes('gym')) {
+    return ['Electronic', 'Hip Hop', 'Pop'];
+  } else if (promptLower.includes('chill') || promptLower.includes('relax')) {
+    return ['Chill', 'Lo-fi', 'Ambient'];
+  } else if (promptLower.includes('indie')) {
+    return ['Indie', 'Alternative', 'Indie Pop'];
+  } else if (promptLower.includes('electronic') || promptLower.includes('edm')) {
+    return ['Electronic', 'EDM', 'House'];
+  } else if (promptLower.includes('jazz')) {
+    return ['Jazz', 'Smooth Jazz', 'Blues'];
+  } else if (promptLower.includes('rock')) {
+    return ['Rock', 'Alternative Rock', 'Indie Rock'];
+  } else {
+    return ['Pop', 'Alternative', 'Indie'];
+  }
+}
+
+// Get curated Spotify tracks for specific genres
+async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTracks: Set<string>, excludeIds: string[], spotifyToken: string): Promise<Song[]> {
+  const { spotifyService } = await import('./spotifyApi');
+  const songs: Song[] = [];
+  
+  // Well-known artists for different genres to ensure we get real tracks
+  const curatedQueries = getCuratedQueriesForPrompt(prompt);
+  
+  for (const query of curatedQueries) {
+    if (songs.length >= needed) break;
+    
+    try {
+      const tracks = await spotifyService.searchTracks(spotifyToken, query, "5");
+      
+      for (const track of tracks) {
+        if (songs.length >= needed) break;
+        
+        const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
+        
+        if (seenTracks.has(trackKey) || excludeIds.includes(track.id)) {
+          continue;
+        }
+        
+        seenTracks.add(trackKey);
+        
+        const song: Song = {
+          id: track.id,
+          title: track.name,
+          artist: track.artists.map(a => a.name).join(', '),
+          album: track.album.name,
+          albumArt: track.album.images[0]?.url || getRandomAlbumArt(),
+          duration: Math.floor(track.duration_ms / 1000),
+          genres: determineGenresFromPrompt(prompt),
+          energy: Math.random() * 0.4 + 0.5,
+          valence: Math.random() * 0.6 + 0.3,
+          tempo: Math.floor(Math.random() * 60) + 90,
+          previewUrl: track.preview_url || undefined
+        };
+        
+        songs.push(song);
+      }
+    } catch (error) {
+      console.error(`Error with curated query "${query}":`, error);
+      continue;
+    }
+  }
+  
+  return songs;
+}
+
+// Get curated search queries for well-known artists
+function getCuratedQueriesForPrompt(prompt: string): string[] {
+  const promptLower = prompt.toLowerCase();
+  
+  if (promptLower.includes('workout') || promptLower.includes('gym')) {
+    return ['artist:Calvin Harris', 'artist:Skrillex', 'artist:Eminem', 'artist:Kanye West', 'artist:The Weeknd'];
+  } else if (promptLower.includes('chill') || promptLower.includes('relax')) {
+    return ['artist:Billie Eilish', 'artist:Lorde', 'artist:Bon Iver', 'artist:Phoebe Bridgers', 'artist:Clairo'];
+  } else if (promptLower.includes('indie')) {
+    return ['artist:Arctic Monkeys', 'artist:Tame Impala', 'artist:Mac Miller', 'artist:Rex Orange County', 'artist:Boy Pablo'];
+  } else if (promptLower.includes('electronic')) {
+    return ['artist:Daft Punk', 'artist:Deadmau5', 'artist:Porter Robinson', 'artist:Flume', 'artist:ODESZA'];
+  } else if (promptLower.includes('jazz')) {
+    return ['artist:Miles Davis', 'artist:John Coltrane', 'artist:Norah Jones', 'artist:Diana Krall', 'artist:Esperanza Spalding'];
+  } else if (promptLower.includes('rock')) {
+    return ['artist:Foo Fighters', 'artist:Red Hot Chili Peppers', 'artist:Imagine Dragons', 'artist:Twenty One Pilots', 'artist:Fall Out Boy'];
+  } else {
+    return ['artist:Taylor Swift', 'artist:Dua Lipa', 'artist:Harry Styles', 'artist:Olivia Rodrigo', 'artist:The Weeknd'];
+  }
 }
 
 // Generate fallback songs that vary based on user prompt
