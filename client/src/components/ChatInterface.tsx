@@ -103,7 +103,11 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
       
       if (data.suggestions && data.suggestions.length > 0) {
         console.log("Calling onSuggestionsGenerated with", data.suggestions.length, "songs");
-        onSuggestionsGenerated(data.suggestions, currentMessage);
+        // Get the user message from the previous message in the conversation
+        const userMessages = messages.filter(m => m.role === "user");
+        const lastUserMessage = userMessages[userMessages.length - 1]?.content || "";
+        console.log("Using last user message as prompt:", lastUserMessage);
+        onSuggestionsGenerated(data.suggestions, lastUserMessage);
       } else {
         console.log("No suggestions in response");
       }
