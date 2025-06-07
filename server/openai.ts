@@ -1012,7 +1012,7 @@ export async function generatePlaylistFromLikedSongs(likedSongs: Song[], origina
     console.error("Error generating playlist metadata:", error);
     
     // Generate fallback based on user's original request and liked songs
-    const genres = [...new Set(likedSongs.flatMap(song => song.genres))];
+    const genres = Array.from(new Set(likedSongs.flatMap(song => song.genres)));
     const mainGenre = genres[0] || "Music";
     
     let title = "Your Vibe Swipe Playlist";
