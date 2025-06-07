@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
+import { useLocation } from 'wouter';
 
 export default function SpotifyCallback() {
+  const [, setLocation] = useLocation();
+
   useEffect(() => {
     // Parse the hash fragment for the access token
     const hash = window.location.hash.substring(1);
@@ -13,34 +16,55 @@ export default function SpotifyCallback() {
     // Verify state to prevent CSRF attacks
     const expectedState = localStorage.getItem('spotify_auth_state');
     
-    if (error) {
-      // Send error to parent window
-      window.opener?.postMessage({
-        type: 'SPOTIFY_AUTH_ERROR',
-        error: error
-      }, window.location.origin);
-    } else if (accessToken && state === expectedState) {
-      // Send success to parent window
-      window.opener?.postMessage({
-        type: 'SPOTIFY_AUTH_SUCCESS',
-        access_token: accessToken,
-        token_type: params.get('token_type'),
-        expires_in: params.get('expires_in')
-      }, window.location.origin);
+    if (window.opener) {
+      // This is a popup window (desktop)
+      if (error) {
+        window.opener.postMessage({
+          type: 'SPOTIFY_AUTH_ERROR',
+          error: error
+        }, window.location.origin);
+      } else if (accessToken && state === expectedState) {
+        window.opener.postMessage({
+          type: 'SPOTIFY_AUTH_SUCCESS',
+          access_token: accessToken,
+          token_type: params.get('token_type'),
+          expires_in: params.get('expires_in')
+        }, window.location.origin);
+      } else {
+        window.opener.postMessage({
+          type: 'SPOTIFY_AUTH_ERROR',
+          error: 'Invalid authentication response'
+        }, window.location.origin);
+      }
+      
+      // Clean up and close popup
+      localStorage.removeItem('spotify_auth_state');
+      window.close();
     } else {
-      // Send error for invalid state or missing token
-      window.opener?.postMessage({
-        type: 'SPOTIFY_AUTH_ERROR',
-        error: 'Invalid authentication response'
-      }, window.location.origin);
+      // This is a mobile redirect (same window)
+      if (error) {
+        console.error('Spotify auth error:', error);
+        // Navigate back to home with error
+        setLocation('/?spotify_error=' + encodeURIComponent(error));
+      } else if (accessToken && state === expectedState) {
+        // Store token temporarily and navigate back
+        sessionStorage.setItem('spotify_temp_token', accessToken);
+        
+        // Get return page or default to home
+        const returnPage = sessionStorage.getItem('spotify_return_page') || '/';
+        sessionStorage.removeItem('spotify_return_page');
+        
+        // Navigate back with success flag
+        setLocation(returnPage + '?spotify_success=true');
+      } else {
+        // Navigate back with error
+        setLocation('/?spotify_error=invalid_response');
+      }
+      
+      // Clean up
+      localStorage.removeItem('spotify_auth_state');
     }
-    
-    // Clean up
-    localStorage.removeItem('spotify_auth_state');
-    
-    // Close the popup
-    window.close();
-  }, []);
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">

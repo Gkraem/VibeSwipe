@@ -88,35 +88,14 @@ export function PlaylistDisplay({
     },
   });
 
-  const handleSpotifyAuth = async () => {
-    try {
-      // Store playlist ID for after auth redirect
-      if (playlistId) {
-        localStorage.setItem('pendingSpotifyExport', playlistId.toString());
-      }
-      
-      // Get Spotify auth URL
-      const response = await apiRequest("GET", "/api/spotify/auth");
-      const data = await response.json();
-      
-      // Redirect to Spotify auth (mobile-friendly)
-      window.location.href = data.authUrl;
-      
-    } catch (error) {
-      toast({
-        title: "Authentication Failed",
-        description: "Failed to connect to Spotify. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+
 
   // Listen for Spotify export trigger from Home page
   useEffect(() => {
     const handleSpotifyExportTrigger = (event: CustomEvent) => {
       const { playlistId: triggerPlaylistId } = event.detail;
       if (playlistId && typeof playlistId === 'number' && playlistId === triggerPlaylistId) {
-        exportToSpotifyMutation.mutate(playlistId);
+        exportToSpotifyMutation.mutate();
       }
     };
 
@@ -128,9 +107,7 @@ export function PlaylistDisplay({
   }, [playlistId, exportToSpotifyMutation]);
 
   const handleExportToSpotify = () => {
-    if (playlistId) {
-      exportToSpotifyMutation.mutate(playlistId);
-    }
+    exportToSpotifyMutation.mutate();
   };
 
   const handleSaveTitle = () => {
@@ -287,7 +264,7 @@ export function PlaylistDisplay({
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
             onClick={handleExportToSpotify}
-            disabled={!playlistId || exportToSpotifyMutation.isPending}
+            disabled={!title || !songs.length || exportToSpotifyMutation.isPending}
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             <Music className="h-4 w-4" />
@@ -321,15 +298,9 @@ export function PlaylistDisplay({
           </div>
         )}
         
-        {playlistId ? (
-          <p className="text-xs text-gray-400 text-center mt-4">
-            Export your playlist directly to your Spotify account
-          </p>
-        ) : (
-          <p className="text-xs text-gray-500 text-center mt-4">
-            Save this playlist first to enable Spotify export
-          </p>
-        )}
+        <p className="text-xs text-gray-400 text-center mt-4">
+          Export your playlist directly to your Spotify account
+        </p>
       </CardContent>
     </Card>
   );

@@ -40,7 +40,24 @@ export class SpotifyWebAPI {
         `state=${state}&` +
         `show_dialog=true`;
 
-      // Create popup for authentication
+      // For mobile devices, use same-window redirect instead of popup
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // Store current page info for return
+        sessionStorage.setItem('spotify_return_page', window.location.pathname);
+        sessionStorage.setItem('spotify_playlist_data', JSON.stringify({
+          title: 'pending',
+          description: 'pending',
+          songs: []
+        }));
+        
+        // Redirect in same window for mobile
+        window.location.href = authUrl;
+        return;
+      }
+
+      // Desktop: use popup
       const popup = window.open(
         authUrl,
         'spotify-auth',

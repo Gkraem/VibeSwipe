@@ -73,37 +73,35 @@ export default function Home() {
     }
   }, []);
 
-  // Handle pending Spotify export after auth redirect
+  // Handle mobile Spotify authentication return
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const spotifyConnected = urlParams.get('spotify_connected');
-    const pendingExportId = localStorage.getItem('pendingSpotifyExport');
+    const spotifySuccess = urlParams.get('spotify_success');
+    const spotifyError = urlParams.get('spotify_error');
     
-    if (spotifyConnected === 'true' && pendingExportId) {
-      // Clear the pending export
-      localStorage.removeItem('pendingSpotifyExport');
+    if (spotifySuccess === 'true') {
+      const tempToken = sessionStorage.getItem('spotify_temp_token');
+      if (tempToken) {
+        toast({
+          title: "Spotify Connected!",
+          description: "Your account is now connected for playlist exports.",
+        });
+        sessionStorage.removeItem('spotify_temp_token');
+      }
       
       // Clear URL params
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Show success toast
+    } else if (spotifyError) {
       toast({
-        title: "Spotify Connected!",
-        description: "Now exporting your playlist...",
+        title: "Spotify Connection Failed",
+        description: "Unable to connect to Spotify. Please try again.",
+        variant: "destructive",
       });
       
-      // Trigger the export
-      setTimeout(() => {
-        if (generatedPlaylist?.id?.toString() === pendingExportId) {
-          // Export current playlist
-          const exportEvent = new CustomEvent('triggerSpotifyExport', { 
-            detail: { playlistId: parseInt(pendingExportId) } 
-          });
-          window.dispatchEvent(exportEvent);
-        }
-      }, 1000);
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [generatedPlaylist, toast]);
+  }, [toast]);
 
   const swipeMutation = useMutation({
     mutationFn: async ({ songId, action }: { songId: string; action: "like" | "skip" }) => {
