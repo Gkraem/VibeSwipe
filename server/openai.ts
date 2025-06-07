@@ -307,21 +307,11 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
   } catch (error) {
     console.error("OpenAI API error:", error);
     
-    // Always use dynamic song generation for music requests
-    if (prompt.toLowerCase().includes('music') || prompt.toLowerCase().includes('song') || prompt.toLowerCase().includes('playlist') || 
-        prompt.toLowerCase().includes('indie') || prompt.toLowerCase().includes('study') || prompt.toLowerCase().includes('workout') ||
-        prompt.toLowerCase().includes('chill') || prompt.toLowerCase().includes('relax') || prompt.toLowerCase().includes('electronic') ||
-        prompt.toLowerCase().includes('jazz') || prompt.toLowerCase().includes('pop') || prompt.toLowerCase().includes('dance')) {
-      
-      const dynamicSongs = await generateSongSuggestions(prompt);
-      return {
-        message: "Great! I've curated 50 tracks based on your request. Start swiping to build your perfect playlist:",
-        suggestions: dynamicSongs
-      };
-    }
-    
+    // When OpenAI fails, generate songs directly from Spotify for any request
+    const dynamicSongs = await generateSongSuggestions(prompt);
     return {
-      message: "I'd love to help you create an amazing playlist! Try describing something like 'indie for studying' or 'upbeat workout music' to get started.",
+      message: "I've found some great tracks for you! Start swiping to discover your perfect playlist:",
+      suggestions: dynamicSongs
     };
   }
 }
@@ -336,8 +326,11 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
     // Get Spotify client credentials token for public search
     const spotifyToken = await getSpotifyClientToken();
     if (!spotifyToken) {
-      throw new Error("Unable to get Spotify access token");
+      console.error("Unable to get Spotify access token - check credentials");
+      return [];
     }
+    
+    console.log("Successfully obtained Spotify token, searching for tracks...");
     
     // Search Spotify for real tracks
     const { spotifyService } = await import('./spotifyApi');
@@ -397,8 +390,8 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
     return allSongs.slice(0, 50);
     
   } catch (error) {
-    console.error("Spotify search failed, using fallback:", error);
-    return generateFallbackSongs(prompt, excludeIds);
+    console.error("Spotify search failed:", error);
+    return [];
   }
 }
 
