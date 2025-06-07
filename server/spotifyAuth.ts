@@ -95,43 +95,10 @@ export async function setupAuth(app: Express) {
   }));
 
   app.get("/api/auth/spotify/callback",
-    (req, res, next) => {
-      passport.authenticate("spotify", (err, user, info) => {
-        if (err) {
-          return res.redirect("/?error=auth_failed");
-        }
-        if (!user) {
-          return res.redirect("/?error=auth_failed");
-        }
-        
-        req.logIn(user, (err) => {
-          if (err) {
-            return res.redirect("/?error=auth_failed");
-          }
-          
-          // Check if mobile browser
-          const userAgent = req.headers['user-agent'] || '';
-          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-          
-          if (isMobile) {
-            // For mobile, use meta refresh with immediate redirect
-            res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="refresh" content="0; url=/">
-  <title>Login Successful</title>
-</head>
-<body>
-  <p>Login successful! Redirecting...</p>
-</body>
-</html>`);
-          } else {
-            // Standard redirect for desktop
-            res.redirect("/");
-          }
-        });
-      })(req, res, next);
-    }
+    passport.authenticate("spotify", { 
+      failureRedirect: "/?error=auth_failed",
+      successRedirect: "/"
+    })
   );
 
   app.get("/api/logout", (req, res) => {
