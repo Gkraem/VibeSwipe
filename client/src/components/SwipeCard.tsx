@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Heart, X } from "lucide-react";
+import { Play, Pause, Heart, X, Volume2, VolumeX } from "lucide-react";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import type { Song } from "@shared/schema";
 
@@ -15,9 +15,43 @@ interface SwipeCardProps {
 
 export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardProps) {
   const [exitX, setExitX] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
+
+  // Check if song has preview URL and setup audio
+  useEffect(() => {
+    if (song.previewUrl && audioRef.current) {
+      setHasAudio(true);
+      audioRef.current.src = song.previewUrl;
+      audioRef.current.volume = 0.5;
+      
+      const audio = audioRef.current;
+      const handleEnded = () => setIsPlaying(false);
+      const handleError = () => setHasAudio(false);
+      
+      audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', handleError);
+      
+      return () => {
+        audio.removeEventListener('ended', handleEnded);
+        audio.removeEventListener('error', handleError);
+      };
+    } else {
+      setHasAudio(false);
+    }
+  }, [song.previewUrl]);
+
+  // Stop audio when card is not active
+  useEffect(() => {
+    if (!isActive && isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive, isPlaying]);
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const offset = info.offset.x;
@@ -31,8 +65,29 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
   };
 
   const handleButtonSwipe = (direction: "left" | "right") => {
+    // Stop audio when swiping
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
     setExitX(direction === "right" ? 1000 : -1000);
     onSwipe(direction);
+  };
+
+  const toggleAudio = () => {
+    if (!audioRef.current || !hasAudio) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
+        console.error('Error playing audio:', error);
+        setHasAudio(false);
+      });
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -51,6 +106,9 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={`absolute ${isActive ? "cursor-grab active:cursor-grabbing z-30" : ""}`}
     >
+      {/* Hidden audio element for preview */}
+      <audio ref={audioRef} preload="metadata" />
+      
       <Card className={`w-80 h-96 bg-gray-900 border-gray-700 ${isActive ? "shadow-2xl shadow-green-500/20" : ""}`}>
         <CardContent className="p-6 h-full flex flex-col">
           {/* Album Art */}
@@ -61,13 +119,31 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
               className="w-full h-32 object-cover rounded-xl"
             />
             {/* Preview Button */}
-            <Button
-              size="sm"
-              className="absolute top-3 right-3 w-10 h-10 rounded-full bg-green-500/20 hover:bg-green-500/40 border-0"
-              disabled // TODO: Implement preview functionality
-            >
-              <Play className="h-4 w-4 text-green-500" />
-            </Button>
+            {hasAudio ? (
+              <Button
+                size="sm"
+                onClick={toggleAudio}
+                className={`absolute top-3 right-3 w-10 h-10 rounded-full border-0 transition-all ${
+                  isPlaying 
+                    ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/30" 
+                    : "bg-green-500/20 hover:bg-green-500/40"
+                }`}
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 text-white" />
+                ) : (
+                  <Play className="h-4 w-4 text-green-500" />
+                )}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="absolute top-3 right-3 w-10 h-10 rounded-full bg-gray-500/20 border-0"
+                disabled
+              >
+                <VolumeX className="h-4 w-4 text-gray-500" />
+              </Button>
+            )}
           </div>
           
           {/* Song Info */}
@@ -79,7 +155,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
               {song.artist}
             </p>
             
-            {/* Genres */}
+            {/* Genres and Audio Indicator */}
             <div className="flex flex-wrap gap-2 mb-4">
               {song.genres.slice(0, 2).map((genre, index) => (
                 <Badge 
@@ -96,6 +172,15 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
                   className="border-gray-600 text-gray-400 text-xs"
                 >
                   {formatDuration(song.duration)}
+                </Badge>
+              )}
+              {hasAudio && (
+                <Badge 
+                  variant="outline"
+                  className="border-green-500/50 text-green-400 text-xs bg-green-500/10"
+                >
+                  <Volume2 className="h-3 w-3 mr-1" />
+                  Preview
                 </Badge>
               )}
             </div>
