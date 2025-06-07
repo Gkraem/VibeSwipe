@@ -71,18 +71,29 @@ export function PlaylistDisplay({
       
       // Check if this is a Spotify auth error
       try {
-        const errorResponse = await (error as any).response?.json?.();
-        const errorMessage = errorResponse?.message || (error instanceof Error ? error.message : String(error));
+        const errorMessage = error instanceof Error ? error.message : String(error);
         
-        if (errorResponse?.requiresAuth) {
-          if (errorResponse?.hasSpotifyAccount) {
+        // Parse error message if it contains JSON
+        let errorData = null;
+        if (errorMessage.includes('401:') && errorMessage.includes('{')) {
+          const jsonStart = errorMessage.indexOf('{');
+          const jsonStr = errorMessage.substring(jsonStart);
+          try {
+            errorData = JSON.parse(jsonStr);
+          } catch (parseError) {
+            // Continue with string message
+          }
+        }
+        
+        if (errorData?.requiresAuth || errorMessage.includes("requiresAuth")) {
+          if (errorData?.hasSpotifyAccount || errorMessage.includes("hasSpotifyAccount")) {
             toast({
               title: "Connect Your Spotify Account",
               description: "Complete the one-time setup to enable seamless playlist exports",
             });
           } else {
             toast({
-              title: "Spotify Connection Required",
+              title: "Spotify Connection Required", 
               description: "Connect your Spotify account to export playlists",
             });
           }
