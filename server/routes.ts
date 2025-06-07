@@ -303,8 +303,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initiate Spotify OAuth for playlist export
   app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
-    // Use exact redirect URI that should be in Spotify app settings
-    const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/spotify/callback';
+    // Use exact redirect URI that matches Spotify app settings
+    const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/auth/spotify/callback';
     
     console.log('=== SPOTIFY AUTH DEBUG ===');
     console.log('Using hardcoded redirect URI:', redirectUri);
@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Handle Spotify OAuth callback for playlist export
-  app.get('/api/spotify/callback', async (req, res) => {
+  app.get('/api/auth/spotify/callback', async (req, res) => {
     try {
       const { code, state: userId, error } = req.query;
       
@@ -347,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Exchange code for access token - use same hardcoded URI
-      const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/spotify/callback';
+      const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/auth/spotify/callback';
       
       console.log('=== TOKEN EXCHANGE DEBUG ===');
       console.log('Using hardcoded redirect URI for token exchange:', redirectUri);
