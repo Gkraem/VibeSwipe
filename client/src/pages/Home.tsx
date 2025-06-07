@@ -360,11 +360,20 @@ export default function Home() {
             <Button
               onClick={() => {
                 const excludeIds = suggestions.map(s => s.id);
-                console.log("Generating more songs with original prompt:", originalPrompt);
+                
+                // Get prompt from state or localStorage as fallback
+                let promptToUse = originalPrompt;
+                if (!promptToUse) {
+                  promptToUse = localStorage.getItem('originalPrompt') || '';
+                }
+                
+                console.log("Original prompt from state:", originalPrompt);
+                console.log("Prompt from localStorage:", localStorage.getItem('originalPrompt'));
+                console.log("Using prompt:", promptToUse);
                 console.log("Current suggestions count:", suggestions.length);
                 console.log("Excluded IDs:", excludeIds.length);
                 
-                if (!originalPrompt) {
+                if (!promptToUse) {
                   console.error("No original prompt available for generating more songs");
                   toast({
                     title: "Error",
@@ -373,7 +382,8 @@ export default function Home() {
                   });
                   return;
                 }
-                generateMoreSongsMutation.mutate({ prompt: originalPrompt, excludeIds });
+                
+                generateMoreSongsMutation.mutate({ prompt: promptToUse, excludeIds });
               }}
               disabled={generateMoreSongsMutation.isPending}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
