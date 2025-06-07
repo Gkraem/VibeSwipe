@@ -387,8 +387,7 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     
   } catch (error) {
     console.error("OpenAI song generation failed:", error);
-    // Fallback to ensure we always return something
-    return generateFallbackSongs(prompt, excludeIds);
+    throw new Error("OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.");
   }
 }
 
@@ -608,65 +607,28 @@ function generateFallbackSongs(prompt: string, excludeIds: string[] = []): Song[
     }
   };
 
-  // Determine genre based on prompt
-  let selectedGenre = 'pop'; // default
-  if (promptLower.includes('workout') || promptLower.includes('gym') || promptLower.includes('exercise')) {
-    selectedGenre = 'workout';
-  } else if (promptLower.includes('chill') || promptLower.includes('relax') || promptLower.includes('calm')) {
-    selectedGenre = 'chill';
-  } else if (promptLower.includes('indie') || promptLower.includes('alternative')) {
-    selectedGenre = 'indie';
-  } else if (promptLower.includes('electronic') || promptLower.includes('edm') || promptLower.includes('techno')) {
-    selectedGenre = 'electronic';
-  } else if (promptLower.includes('jazz') || promptLower.includes('blues') || promptLower.includes('smooth')) {
-    selectedGenre = 'jazz';
-  }
+  // Add more specific genre templates for different moods
+  const sadGenreTemplate = {
+    artists: ["Adele", "Sam Smith", "Lewis Capaldi", "Billie Eilish", "The Weeknd", "Lana Del Rey", "Johnny Cash", "Hurt", "Mad World", "Skinny Love"],
+    titles: ["Someone Like You", "Too Good At Goodbyes", "Someone You Loved", "When The Party's Over", "Call Out My Name", "Video Games", "Hurt", "Mad World", "Skinny Love", "Black"],
+    genres: ["Pop", "Alternative", "Indie"],
+    energy: [0.1, 0.4],
+    valence: [0.1, 0.3],
+    tempo: [60, 90]
+  };
 
-  const template = genreTemplates[selectedGenre as keyof typeof genreTemplates];
-  const songs: Song[] = [];
-  const timestamp = Date.now();
+  const breakupGenreTemplate = {
+    artists: ["Taylor Swift", "Olivia Rodrigo", "Adele", "Amy Winehouse", "The 1975", "Giveon", "Harry Styles", "Tate McRae"],
+    titles: ["All Too Well", "Drivers License", "Someone Like You", "Back to Black", "Somebody Else", "Heartbreak Anniversary", "Falling", "You Broke Me First"],
+    genres: ["Pop", "Alternative", "R&B"],
+    energy: [0.2, 0.5],
+    valence: [0.1, 0.4],
+    tempo: [70, 100]
+  };
 
-  // Generate 50 unique songs
-  for (let i = 0; i < 50; i++) {
-    const artist = template.artists[Math.floor(Math.random() * template.artists.length)];
-    const title = template.titles[Math.floor(Math.random() * template.titles.length)];
-    const genre = template.genres[Math.floor(Math.random() * template.genres.length)];
-    
-    // Add significant variation to make each song unique
-    const titleVariations = ['', '(Extended Mix)', '(Radio Edit)', '(VIP Mix)', '(Acoustic)', '(Live)', '(Remix)', '(Deluxe)', '(Original Mix)', '(Club Mix)'];
-    const artistVariations = ['', 'feat. Various Artists', '& Friends', 'ft. Guest Vocals', 'with Special Guest'];
-    
-    const uniqueTitle = `${title} ${titleVariations[i % titleVariations.length]}`.trim();
-    const uniqueArtist = i % 5 === 0 ? `${artist} ${artistVariations[Math.floor(i / 5) % artistVariations.length]}`.trim() : artist;
-    
-    const albumArts = [
-      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300", 
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1520637836862-4d197d17c50a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1517230878791-4d28214057c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-      "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
-    ];
-
-    const song: Song = {
-      id: `${selectedGenre}_${timestamp}_${i}`,
-      title: uniqueTitle,
-      artist: uniqueArtist,
-      album: `${selectedGenre.charAt(0).toUpperCase() + selectedGenre.slice(1)} Collection Vol. ${Math.floor(i / 10) + 1}`,
-      albumArt: albumArts[Math.floor(Math.random() * albumArts.length)],
-      duration: Math.floor(Math.random() * 120) + 180, // 3-5 minutes
-      genres: [genre, template.genres[Math.floor(Math.random() * template.genres.length)]],
-      energy: template.energy[0] + Math.random() * (template.energy[1] - template.energy[0]),
-      valence: template.valence[0] + Math.random() * (template.valence[1] - template.valence[0]),
-      tempo: Math.floor(template.tempo[0] + Math.random() * (template.tempo[1] - template.tempo[0]))
-    };
-    
-    songs.push(song);
-  }
-
-  return songs.filter(song => !excludeIds.includes(song.id));
+  // Return empty array when no OpenAI available to maintain data integrity
+  console.log("OpenAI not available for song generation - returning empty result");
+  return [];
 }
 
 export async function generatePlaylistFromLikedSongs(likedSongs: Song[], originalPrompt: string): Promise<{ title: string; description: string }> {

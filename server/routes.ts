@@ -90,7 +90,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error in chat:", error);
-      res.status(500).json({ message: "Failed to process chat message" });
+      if (error instanceof Error && error.message.includes("OpenAI API quota exceeded")) {
+        res.status(402).json({ 
+          message: "OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.",
+          requiresApiKey: true
+        });
+      } else {
+        res.status(500).json({ message: "Failed to process chat message" });
+      }
     }
   });
 
