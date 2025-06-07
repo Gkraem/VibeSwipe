@@ -249,9 +249,16 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
             <p>No songs to display. Start a conversation above to get suggestions!</p>
           </div>
         ) : currentIndex >= songs.length ? (
-          <div className="text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">You've gone through all the suggestions.</p>
-            <p className="text-green-500 dark:text-green-400">Liked {likedCount} songs</p>
+          <div className="text-center bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="text-xl font-bold text-white mb-2">All done!</h3>
+            <p className="text-gray-400 mb-4">You've gone through all the suggestions.</p>
+            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+              <p className="text-green-400 font-medium">Liked {likedCount} songs</p>
+              {likedCount > 0 && (
+                <p className="text-gray-400 text-sm mt-1">Ready to create your playlist?</p>
+              )}
+            </div>
           </div>
         ) : (
           // Render visible cards

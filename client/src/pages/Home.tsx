@@ -243,7 +243,21 @@ export default function Home() {
       setLikedSongs(prev => [...prev, song]);
     }
     
-    setCurrentIndex(prev => prev + 1);
+    const newIndex = currentIndex + 1;
+    setCurrentIndex(newIndex);
+    
+    // Auto-generate playlist when user finishes swiping and has liked songs
+    if (newIndex >= suggestions.length && likedSongs.length > 0) {
+      setTimeout(() => {
+        try {
+          if (!generatedPlaylist) {
+            handleGeneratePlaylist();
+          }
+        } catch (error) {
+          console.error('Error auto-generating playlist:', error);
+        }
+      }, 1000);
+    }
   };
 
   const handleGeneratePlaylist = () => {

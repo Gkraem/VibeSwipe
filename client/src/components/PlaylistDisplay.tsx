@@ -39,22 +39,6 @@ export function PlaylistDisplay({
   onSpotifyExport
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
-
-  // Listen for Spotify export trigger from Home page
-  useEffect(() => {
-    const handleSpotifyExportTrigger = (event: CustomEvent) => {
-      const { playlistId: triggerPlaylistId } = event.detail;
-      if (playlistId === triggerPlaylistId) {
-        exportToSpotifyMutation.mutate(playlistId);
-      }
-    };
-
-    window.addEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
-    
-    return () => {
-      window.removeEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
-    };
-  }, [playlistId, exportToSpotifyMutation]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
 
@@ -151,6 +135,22 @@ export function PlaylistDisplay({
       });
     }
   };
+
+  // Listen for Spotify export trigger from Home page
+  useEffect(() => {
+    const handleSpotifyExportTrigger = (event: CustomEvent) => {
+      const { playlistId: triggerPlaylistId } = event.detail;
+      if (playlistId && typeof playlistId === 'number' && playlistId === triggerPlaylistId) {
+        exportToSpotifyMutation.mutate(playlistId);
+      }
+    };
+
+    window.addEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
+    
+    return () => {
+      window.removeEventListener('triggerSpotifyExport', handleSpotifyExportTrigger as EventListener);
+    };
+  }, [playlistId, exportToSpotifyMutation]);
 
   const handleExportToSpotify = () => {
     if (playlistId) {
