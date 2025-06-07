@@ -1,0 +1,158 @@
+Software Requirements Specification (SRS)
+Project Name: Vibe Swipe — AI Playlist Generator
+Version: 1.0
+Last Updated: June 6, 2025
+1. Introduction
+1.1 Purpose
+The purpose of this project is to develop Vibe Swipe, an AI-powered playlist generator that creates hyper-personalized music playlists using conversational input, emotional cues, and real-time user data from Spotify or Apple Music. The application combines a ChatGPT-style interface with a swipe-based music discovery experience to revolutionize how users curate playlists based on mood, events, or creative scenarios.
+
+1.2 Scope
+Vibe Swipe will allow users to:
+
+Log in using Spotify or Apple Music via OAuth
+
+Input natural language prompts to describe desired playlists
+
+Receive smart song suggestions using AI-curated emotional, contextual, and tempo analysis
+
+Swipe through music cards to approve or skip songs
+
+Generate playlists based on swiped selections
+
+(In the future) Export curated playlists directly to Spotify or Apple Music
+
+The application will emphasize a sleek, modern, responsive design, using cutting-edge UI elements like swipe cards, light/dark modes, fluid transitions, and minimalist navigation.
+
+2. Overall Description
+2.1 User Classes
+Standard Users: Sign in, describe playlists, swipe on songs, view and save playlists
+
+Admin User: (Optional) Debugging access, log tracking, and seed data oversight
+
+2.2 Design Priorities
+Conversational & Interactive UI:
+
+ChatGPT-style prompt box for user input
+
+Swipe card interface for engaging song selection
+
+Modern Music App Design:
+
+Mobile-first responsiveness
+
+Minimalist layout, clear icons, and animated feedback
+
+Audio preview option for each song card (future)
+
+3. Functional Requirements
+3.1 Authentication
+OAuth Integration:
+
+Log in with Spotify or Apple Music
+
+Permissions requested:
+
+Read listening history
+
+Access liked/saved songs
+
+View playlists
+
+Session Management:
+
+Persistent login with refresh token
+
+Logout option from dropdown
+
+3.2 Conversational Input & Song Seeding
+Prompt Input Field:
+
+Chat-style text box with placeholder prompt examples
+
+Animations or AI suggestions for input tips
+
+Optional Seeding:
+
+Users can manually input 3–5 songs
+
+Alternatively, allow system to seed based on listening history and emotional tags
+
+3.3 AI-Powered Suggestions & Swiping
+3.3.1 Swipe Interface:
+Interactive card UI for song suggestions
+
+Displays song title, artist, album art, and optional genre tags
+
+Swipe right → Add to playlist
+
+Swipe left → Skip
+
+Swipe animations and visual feedback included
+
+3.3.2 Generate Playlist Button:
+Once swiping ends, users click “Generate Playlist”
+
+System displays final playlist in a responsive, modern format
+
+Playlist includes total duration, track count, and reorder options (future)
+
+3.4 Playlist Display & Export Options
+Final Playlist View:
+
+Grid or stacked layout of selected songs
+
+Playback preview buttons (future)
+
+Song order editable via drag-and-drop (future)
+
+Export Buttons (Placeholders):
+
+“Add to Spotify”
+
+“Add to Apple Music”
+
+Disabled by default — to be functional in a future API release
+
+4. Non-Functional Requirements
+4.1 Usability
+Conversational interface for intuitive playlist creation
+
+Swipe design for active participation and engagement
+
+Clean, aesthetic UI with support for light/dark themes
+
+Responsive for mobile, tablet, and desktop devices
+
+4.2 Performance
+Instant song preview card rendering
+
+Fast AI-generated responses from prompt input
+
+Smooth transitions and animations on swipe
+
+4.3 Security
+OAuth tokens securely stored and refreshed
+
+No personal data retained beyond user session
+
+HTTPS enforced and session-protected routes
+
+4.4 Maintainability
+Modular React/Vue components for easy feature expansion
+
+API wrappers abstracted for Spotify/Apple Music
+
+Scalable architecture for future AI enhancements
+
+5. Future Enhancements
+Full Spotify/Apple Music API integration for playlist export
+
+Audio preview per card
+
+AI “vibe rewriter” to suggest improved prompts
+
+Mood visualizer or color-mapped playlist generator
+
+Shareable playlist links or QR codes
+
+AI DJ mode: dynamically playing songs based on mood prompts
