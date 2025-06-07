@@ -95,12 +95,10 @@ export async function setupAuth(app: Express) {
   }));
 
   app.get("/api/auth/spotify/callback",
-    passport.authenticate("spotify", { failureRedirect: "/?error=auth_failed" }),
-    (req, res) => {
-      // Force redirect to home page with explicit domain
-      const redirectUrl = `${req.protocol}://${req.get('host')}/`;
-      res.redirect(redirectUrl);
-    }
+    passport.authenticate("spotify", { 
+      failureRedirect: "/?error=auth_failed",
+      successRedirect: "/"
+    })
   );
 
   app.get("/api/logout", (req, res) => {
