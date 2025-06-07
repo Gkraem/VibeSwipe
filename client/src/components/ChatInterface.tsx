@@ -123,7 +123,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
     <Card className="bg-gray-900 border-gray-700">
       <CardContent className="p-6">
         <h2 className="text-2xl font-bold mb-4 text-center text-white">
-          Describe Your Perfect Playlist
+          Describe Your Playlist
         </h2>
         
         {/* Chat History */}
@@ -179,7 +179,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
         <form onSubmit={handleSubmit} className="relative">
           <Input
             type="text"
-            placeholder="Describe your playlist vibe... (e.g., 'chill songs for rainy days')"
+            placeholder="Describe your playlist... (e.g., 'chill songs for rainy days')"
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
             onKeyPress={handleKeyPress}

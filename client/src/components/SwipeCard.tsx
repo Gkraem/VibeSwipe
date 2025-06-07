@@ -155,15 +155,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
                   {formatDuration(song.duration)}
                 </Badge>
               )}
-              {hasAudio && (
-                <Badge 
-                  variant="outline"
-                  className="border-green-500/50 text-green-400 text-xs bg-green-500/10"
-                >
-                  <Volume2 className="h-3 w-3 mr-1" />
-                  Preview
-                </Badge>
-              )}
+
             </div>
             
             {/* Description */}

@@ -268,18 +268,7 @@ export default function Home() {
     const newIndex = currentIndex + 1;
     setCurrentIndex(newIndex);
     
-    // Auto-generate playlist when user finishes swiping and has liked songs
-    if (newIndex >= suggestions.length && likedSongs.length > 0) {
-      setTimeout(() => {
-        try {
-          if (!generatedPlaylist) {
-            handleGeneratePlaylist();
-          }
-        } catch (error) {
-          console.error('Error auto-generating playlist:', error);
-        }
-      }, 1000);
-    }
+    // Remove auto-generation - let user decide when to create playlist
   };
 
   const handleGeneratePlaylist = () => {
