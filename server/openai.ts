@@ -833,6 +833,19 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
   const { spotifyService } = await import('./spotifyApi');
   const songs: Song[] = [];
   
+  // Enhanced normalization function for absolute duplicate prevention
+  const createSongKey = (title: string, artist: string): string => {
+    const normalize = (text: string) => text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '') // Remove all punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version|remaster|live|acoustic|original|mix)\b.*$/i, '') // Remove suffixes
+      .trim();
+    
+    return `${normalize(title)}:::${normalize(artist)}`;
+  };
+  
   // Well-known artists for different genres to ensure we get real tracks
   const curatedQueries = getCuratedQueriesForPrompt(prompt);
   

@@ -437,20 +437,20 @@ export default function Home() {
             </div>
           </div>
         )}
-      </main>
 
-      {/* Reset Search Button - fixed at bottom of page */}
-      {(suggestions.length > 0 || likedSongs.length > 0 || generatedPlaylist) && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <Button
-            onClick={handleResetSearch}
-            variant="destructive"
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium shadow-lg"
-          >
-            Reset Search
-          </Button>
-        </div>
-      )}
+        {/* Reset Search Button - inline with content flow */}
+        {(suggestions.length > 0 || likedSongs.length > 0 || generatedPlaylist) && (
+          <div className="mb-8 text-center">
+            <Button
+              onClick={handleResetSearch}
+              variant="destructive"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium shadow-lg"
+            >
+              Reset Search
+            </Button>
+          </div>
+        )}
+      </main>
 
       <BottomNavigation />
     </div>
