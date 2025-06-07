@@ -3,6 +3,7 @@ import { Navigation, BottomNavigation } from "@/components/Navigation";
 import { ChatInterface } from "@/components/ChatInterface";
 import { SwipeInterface } from "@/components/SwipeCard";
 import { PlaylistDisplay } from "@/components/PlaylistDisplay";
+import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -118,6 +119,41 @@ export default function Home() {
     },
   });
 
+  const generateMoreSongsMutation = useMutation({
+    mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
+      const response = await apiRequest("POST", "/api/songs/generate", {
+        prompt,
+        excludeIds,
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setSuggestions(prev => [...prev, ...data.songs]);
+      toast({
+        title: "More Songs Generated",
+        description: `Added ${data.songs.length} new songs to discover!`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to generate more songs. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSuggestionsGenerated = (songs: Song[], prompt: string) => {
     console.log("handleSuggestionsGenerated called with:", songs.length, "songs");
     console.log("First few songs:", songs.slice(0, 3));
@@ -187,6 +223,22 @@ export default function Home() {
               currentIndex={currentIndex}
               likedCount={likedSongs.length}
             />
+          </div>
+        )}
+
+        {/* Generate More Songs Button */}
+        {currentIndex >= suggestions.length && suggestions.length > 0 && (
+          <div className="mb-6 text-center">
+            <Button
+              onClick={() => {
+                const excludeIds = suggestions.map(s => s.id);
+                generateMoreSongsMutation.mutate({ prompt: originalPrompt, excludeIds });
+              }}
+              disabled={generateMoreSongsMutation.isPending}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+            >
+              {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 50 More Songs"}
+            </Button>
           </div>
         )}
 

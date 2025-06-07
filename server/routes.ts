@@ -23,6 +23,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate additional songs
+  app.post('/api/songs/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt, excludeIds = [] } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const { generateSongSuggestions } = await import('./openai');
+      const songs = await generateSongSuggestions(prompt, excludeIds);
+
+      res.json({ songs });
+    } catch (error) {
+      console.error("Error generating additional songs:", error);
+      res.status(500).json({ message: "Failed to generate songs" });
+    }
+  });
+
   // Chat routes
   app.post('/api/chat/send', isAuthenticated, async (req: any, res) => {
     try {
