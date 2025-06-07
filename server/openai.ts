@@ -354,6 +354,9 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     const result = JSON.parse(response.choices[0].message.content || '{"songs": []}');
     const songs: Song[] = [];
     
+    // Get Spotify token for album art lookup
+    const spotifyToken = await getSpotifyClientToken();
+    
     if (result.songs && Array.isArray(result.songs)) {
       for (let i = 0; i < result.songs.length && songs.length < 50; i++) {
         const songData = result.songs[i];
@@ -365,12 +368,21 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
         // Skip if this song ID is in excludeIds
         if (excludeIds.includes(songId)) continue;
         
+        // Try to get real album art from Spotify
+        let albumArt = getRandomAlbumArt(); // fallback
+        if (spotifyToken) {
+          const spotifyAlbumArt = await getSpotifyAlbumArt(songData.title, songData.artist, spotifyToken);
+          if (spotifyAlbumArt) {
+            albumArt = spotifyAlbumArt;
+          }
+        }
+        
         const song: Song = {
           id: songId,
           title: songData.title,
           artist: songData.artist,
           album: songData.album || `${songData.artist} - Singles`,
-          albumArt: getRandomAlbumArt(),
+          albumArt,
           duration: songData.duration || Math.floor(Math.random() * 120) + 180, // 3-5 minutes
           genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
           energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
@@ -382,6 +394,63 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
       }
     }
     
+    // Ensure we always return exactly 50 songs
+    if (songs.length < 50) {
+      console.log(`Only generated ${songs.length} songs, padding to 50...`);
+      const additionalNeeded = 50 - songs.length;
+      
+      // Generate additional songs using a follow-up request
+      const additionalResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `Generate exactly ${additionalNeeded} more songs similar to the previous recommendations. Return as JSON with "songs" array.`
+          },
+          {
+            role: "user",
+            content: `Generate ${additionalNeeded} additional songs for: ${prompt}. Make them different from these already generated: ${songs.map(s => `${s.title} by ${s.artist}`).join(', ')}`
+          }
+        ],
+        response_format: { type: "json_object" },
+      });
+      
+      const additionalResult = JSON.parse(additionalResponse.choices[0].message.content || '{"songs": []}');
+      
+      if (additionalResult.songs && Array.isArray(additionalResult.songs)) {
+        for (let i = 0; i < additionalResult.songs.length && songs.length < 50; i++) {
+          const songData = additionalResult.songs[i];
+          if (!songData.title || !songData.artist) continue;
+          
+          const songId = `ai-${Date.now()}-${songs.length}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Try to get real album art from Spotify
+          let albumArt = getRandomAlbumArt(); // fallback
+          if (spotifyToken) {
+            const spotifyAlbumArt = await getSpotifyAlbumArt(songData.title, songData.artist, spotifyToken);
+            if (spotifyAlbumArt) {
+              albumArt = spotifyAlbumArt;
+            }
+          }
+          
+          const song: Song = {
+            id: songId,
+            title: songData.title,
+            artist: songData.artist,
+            album: songData.album || `${songData.artist} - Singles`,
+            albumArt,
+            duration: songData.duration || Math.floor(Math.random() * 120) + 180,
+            genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
+            energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
+            valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
+            previewUrl: undefined
+          };
+          
+          songs.push(song);
+        }
+      }
+    }
+    
     console.log(`AI Response: Generated ${songs.length} songs for prompt: "${prompt}"`);
     return songs;
     
@@ -389,21 +458,6 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     console.error("OpenAI song generation failed:", error);
     throw new Error("OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.");
   }
-}
-
-// Helper function to get random album art
-function getRandomAlbumArt(): string {
-  const albumArts = [
-    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300", 
-    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1520637836862-4d197d17c50a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1517230878791-4d28214057c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-    "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
-  ];
-  return albumArts[Math.floor(Math.random() * albumArts.length)];
 }
 
 // Get Spotify client credentials token for public API access
@@ -419,7 +473,7 @@ async function getSpotifyClientToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.error('Failed to get Spotify token:', response.statusText);
+      console.error('Failed to get Spotify token');
       return null;
     }
 
@@ -430,6 +484,55 @@ async function getSpotifyClientToken(): Promise<string | null> {
     return null;
   }
 }
+
+// Get album art from Spotify for a specific song
+async function getSpotifyAlbumArt(title: string, artist: string, token: string): Promise<string | null> {
+  try {
+    const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.tracks?.items?.length > 0) {
+      const track = data.tracks.items[0];
+      if (track.album?.images?.length > 0) {
+        // Get the medium size image (usually 300x300)
+        const image = track.album.images.find((img: any) => img.width === 300) || track.album.images[0];
+        return image.url;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Error fetching album art for "${title}" by "${artist}":`, error);
+    return null;
+  }
+}
+
+// Helper function to get random album art fallback
+function getRandomAlbumArt(): string {
+  const albumArts = [
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300", 
+    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1520637836862-4d197d17c50a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1517230878791-4d28214057c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+    "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
+  ];
+  return albumArts[Math.floor(Math.random() * albumArts.length)];
+}
+
+
 
 // Generate search queries for Spotify based on user prompt
 function generateSearchQueries(prompt: string): string[] {
