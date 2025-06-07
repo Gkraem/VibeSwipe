@@ -25,7 +25,6 @@ interface PlaylistDisplayProps {
   editable?: boolean;
   spotifyUrl?: string;
   onSpotifyExport?: (spotifyUrl: string) => void;
-  onReset?: () => void;
 }
 
 export function PlaylistDisplay({ 
@@ -39,8 +38,7 @@ export function PlaylistDisplay({
   onUpdateTitle,
   editable = false,
   spotifyUrl,
-  onSpotifyExport,
-  onReset
+  onSpotifyExport
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -59,10 +57,6 @@ export function PlaylistDisplay({
       if (data.playlistUrl) {
         onSpotifyExport?.(data.playlistUrl);
       }
-      // Reset the interface after successful export
-      setTimeout(() => {
-        onReset?.();
-      }, 2000); // Wait 2 seconds to let user see the success message
     },
     onError: async (error) => {
       if (isUnauthorizedError(error)) {
