@@ -306,6 +306,19 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
     };
   } catch (error) {
     console.error("OpenAI API error:", error);
+    
+    // Return demo suggestions for indie study music
+    if (prompt.toLowerCase().includes('indie') || prompt.toLowerCase().includes('study')) {
+      return {
+        message: "Perfect! I've got some great indie tracks for studying. Let me show you some recommendations to swipe through:",
+        suggestions: DEMO_SONGS.filter(song => 
+          song.genres.includes('Indie') || 
+          song.genres.includes('Alternative') ||
+          song.energy < 0.6
+        ).slice(0, 10)
+      };
+    }
+    
     return {
       message: "I'm having trouble connecting right now, but I'd love to help you create an amazing playlist! Could you tell me what kind of vibe you're going for?",
     };
