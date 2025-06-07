@@ -120,6 +120,14 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+    return allUsers;
+  }
+
   // Conversation operations
   async createConversation(conversationData: InsertConversation): Promise<Conversation> {
     const [conversation] = await db
