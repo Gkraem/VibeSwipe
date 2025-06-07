@@ -162,6 +162,67 @@ export function setupAuth(app: Express) {
       profileImageUrl: user.profileImageUrl,
     });
   });
+
+  app.patch("/api/auth/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const { email, currentPassword, newPassword, spotifyUsername, spotifyPassword } = req.body;
+      const userId = req.user.id;
+
+      if (!currentPassword && (email || newPassword)) {
+        return res.status(400).json({ message: "Current password is required for email or password changes" });
+      }
+
+      // Verify current password if provided
+      if (currentPassword) {
+        const user = await storage.getUser(userId);
+        if (!user || !(await comparePasswords(currentPassword, user.password!))) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+
+      if (email && email !== req.user.email) {
+        // Check if email is already taken
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+        updateData.email = email;
+      }
+
+      if (newPassword) {
+        updateData.password = await hashPassword(newPassword);
+      }
+
+      if (spotifyUsername !== undefined) {
+        updateData.spotifyUsername = spotifyUsername || null;
+      }
+
+      if (spotifyPassword !== undefined) {
+        updateData.spotifyPassword = spotifyPassword ? await hashPassword(spotifyPassword) : null;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No changes provided" });
+      }
+
+      // Update user
+      const updatedUser = await storage.updateUser(userId, updateData);
+
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        profileImageUrl: updatedUser.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Profile update failed" });
+    }
+  });
 }
 
 export const isAuthenticated = (req: any, res: any, next: any) => {

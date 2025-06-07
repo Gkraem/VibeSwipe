@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
-import { Music, Moon, Sun, LogOut, User } from "lucide-react";
+import { Music, Moon, Sun, LogOut, User, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 
 export function Navigation() {
   const { user } = useAuth();
@@ -67,6 +68,12 @@ export function Navigation() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+              <DropdownMenuItem asChild className="text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white focus:text-gray-700 dark:focus:text-white">
+                <Link href="/settings" className="flex items-center w-full">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white focus:text-gray-700 dark:focus:text-white">
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
