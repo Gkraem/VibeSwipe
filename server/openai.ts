@@ -368,17 +368,23 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
         // Skip if this song ID is in excludeIds
         if (excludeIds.includes(songId)) continue;
         
+        // Get both album art and preview URL from Spotify
+        const spotifyToken = await getSpotifyClientToken();
+        const spotifyData = spotifyToken 
+          ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
+          : { albumArt: null, previewUrl: null };
+
         const song: Song = {
           id: songId,
           title: songData.title,
           artist: songData.artist,
           album: songData.album || `${songData.artist} - Singles`,
-          albumArt: await getAlbumArtFromSpotify(songData.title, songData.artist),
+          albumArt: spotifyData.albumArt || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
           duration: songData.duration || Math.floor(Math.random() * 120) + 180, // 3-5 minutes
           genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
           energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
           valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-          previewUrl: undefined
+          previewUrl: spotifyData.previewUrl || undefined
         };
         
         songs.push(song);
@@ -414,17 +420,23 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
           
           const songId = `ai-${Date.now()}-${songs.length}-${Math.random().toString(36).substr(2, 9)}`;
           
+          // Get both album art and preview URL from Spotify
+          const spotifyToken = await getSpotifyClientToken();
+          const spotifyData = spotifyToken 
+            ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
+            : { albumArt: null, previewUrl: null };
+
           const song: Song = {
             id: songId,
             title: songData.title,
             artist: songData.artist,
             album: songData.album || `${songData.artist} - Singles`,
-            albumArt: await getAlbumArtFromSpotify(songData.title, songData.artist),
+            albumArt: spotifyData.albumArt || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
             duration: songData.duration || Math.floor(Math.random() * 120) + 180,
             genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
             energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
             valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-            previewUrl: undefined
+            previewUrl: spotifyData.previewUrl
           };
           
           songs.push(song);
@@ -466,8 +478,8 @@ async function getSpotifyClientToken(): Promise<string | null> {
   }
 }
 
-// Get album art from Spotify for a specific song
-async function getSpotifyAlbumArt(title: string, artist: string, token: string): Promise<string | null> {
+// Get both album art and preview URL from Spotify for a specific song
+async function getSpotifyTrackData(title: string, artist: string, token: string): Promise<{ albumArt: string | null; previewUrl: string | null }> {
   try {
     const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
     const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
@@ -477,25 +489,34 @@ async function getSpotifyAlbumArt(title: string, artist: string, token: string):
     });
 
     if (!response.ok) {
-      return null;
+      return { albumArt: null, previewUrl: null };
     }
 
     const data = await response.json();
     
     if (data.tracks?.items?.length > 0) {
       const track = data.tracks.items[0];
-      if (track.album?.images?.length > 0) {
-        // Get the medium size image (usually 300x300)
-        const image = track.album.images.find((img: any) => img.width === 300) || track.album.images[0];
-        return image.url;
-      }
+      const albumArt = track.album?.images?.length > 0 
+        ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
+        : null;
+      
+      return { 
+        albumArt, 
+        previewUrl: track.preview_url || null 
+      };
     }
 
-    return null;
+    return { albumArt: null, previewUrl: null };
   } catch (error) {
-    console.error(`Error fetching album art for "${title}" by "${artist}":`, error);
-    return null;
+    console.error('Error fetching Spotify track data:', error);
+    return { albumArt: null, previewUrl: null };
   }
+}
+
+// Get album art from Spotify for a specific song (backwards compatibility)
+async function getSpotifyAlbumArt(title: string, artist: string, token: string): Promise<string | null> {
+  const { albumArt } = await getSpotifyTrackData(title, artist, token);
+  return albumArt;
 }
 
 // Get real album art from Spotify
