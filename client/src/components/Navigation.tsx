@@ -45,15 +45,6 @@ export function Navigation() {
       </div>
       
       <div className="flex items-center space-x-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={toggleTheme}
-          className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-        >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-        
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
