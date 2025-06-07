@@ -124,32 +124,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
               alt={`${song.title} album art`}
               className="w-full h-32 object-cover rounded-xl"
             />
-            {/* Preview Button */}
-            {hasAudio ? (
-              <Button
-                size="sm"
-                onClick={toggleAudio}
-                className={`absolute top-3 right-3 w-10 h-10 rounded-full border-0 transition-all ${
-                  isPlaying 
-                    ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/30" 
-                    : "bg-green-500/20 hover:bg-green-500/40"
-                }`}
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4 text-white" />
-                ) : (
-                  <Play className="h-4 w-4 text-green-500" />
-                )}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="absolute top-3 right-3 w-10 h-10 rounded-full bg-gray-500/20 border-0"
-                disabled
-              >
-                <VolumeX className="h-4 w-4 text-gray-500" />
-              </Button>
-            )}
+
           </div>
           
           {/* Song Info */}
