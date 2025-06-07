@@ -68,6 +68,14 @@ export function Navigation() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+              {(user as any)?.email === 'gkraem@vt.edu' && (
+                <DropdownMenuItem asChild className="text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white focus:text-gray-700 dark:focus:text-white">
+                  <Link href="/admin" className="flex items-center w-full">
+                    <User className="h-4 w-4 mr-2" />
+                    Admin Panel
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem asChild className="text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white focus:text-gray-700 dark:focus:text-white">
                 <Link href="/settings" className="flex items-center w-full">
                   <Settings className="h-4 w-4 mr-2" />

@@ -9,6 +9,7 @@ import Landing from "@/pages/Landing";
 import AuthPage from "@/pages/AuthPage";
 import Home from "@/pages/Home";
 import SettingsPage from "@/pages/SettingsPage";
+import AdminPanel from "@/pages/AdminPanel";
 
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/settings" component={SettingsPage} />
+          <Route path="/admin" component={AdminPanel} />
           <Route path="/auth" component={() => { window.location.href = '/'; return null; }} />
         </>
       ) : (

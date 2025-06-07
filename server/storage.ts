@@ -25,6 +25,7 @@ export interface IStorage {
   createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User>;
+  getAllUsers(): Promise<User[]>;
   
   // Conversation operations
   createConversation(conversation: InsertConversation): Promise<Conversation>;
