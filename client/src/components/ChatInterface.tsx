@@ -128,7 +128,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
               </div>
               
               {message.role === "user" && (
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
                   <User className="text-white text-sm" />
                 </div>
               )}
