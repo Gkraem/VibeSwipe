@@ -273,6 +273,15 @@ export default function Home() {
     setGeneratedPlaylist(null);
   };
 
+  const handleResetSearch = () => {
+    setSuggestions([]);
+    setCurrentIndex(0);
+    setLikedSongs([]);
+    setOriginalPrompt("");
+    setGeneratedPlaylist(null);
+    setGenerationProgress(0);
+  };
+
   const handleSwipe = (song: Song, direction: "left" | "right") => {
     const action = direction === "right" ? "like" : "skip";
     
@@ -429,6 +438,19 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Reset Search Button - only show when there's content to reset */}
+      {(suggestions.length > 0 || likedSongs.length > 0 || generatedPlaylist) && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+          <Button
+            onClick={handleResetSearch}
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium shadow-lg"
+          >
+            Reset Search
+          </Button>
+        </div>
+      )}
 
       <BottomNavigation />
     </div>

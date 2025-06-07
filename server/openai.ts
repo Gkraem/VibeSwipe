@@ -362,6 +362,7 @@ For specific genres like Afro House, include established artists like Black Coff
 
     const result = JSON.parse(response.choices[0].message.content || '{"songs": []}');
     const songs: Song[] = [];
+    const seenSongs = new Set<string>(); // Track duplicates by title-artist combination
     
     if (result.songs && Array.isArray(result.songs)) {
       // Process all songs from the result (up to 40)
@@ -370,6 +371,15 @@ For specific genres like Afro House, include established artists like Black Coff
       for (let i = 0; i < songsToProcess && songs.length < 25; i++) {
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
+        
+        // Create unique identifier for duplicate checking
+        const songKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+        
+        // Skip if we've already seen this song
+        if (seenSongs.has(songKey)) {
+          console.log(`Skipping duplicate: "${songData.title}" by "${songData.artist}"`);
+          continue;
+        }
         
         // Create unique ID for the song
         const songId = `ai-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
@@ -395,6 +405,9 @@ For specific genres like Afro House, include established artists like Black Coff
           console.log(`Skipping "${songData.title}" by "${songData.artist}" - missing album art or preview URL`);
           continue;
         }
+
+        // Add to seen songs set
+        seenSongs.add(songKey);
 
         const song: Song = {
           id: songId,
@@ -444,6 +457,13 @@ For specific genres like Afro House, include established artists like Black Coff
           const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
           
+          // Check for duplicates
+          const songKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+          if (seenSongs.has(songKey)) {
+            console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
+            continue;
+          }
+          
           const songId = `ai-${Date.now()}-${songs.length}-${Math.random().toString(36).substr(2, 9)}`;
           
           // Get both album art and preview URL from Spotify
@@ -464,6 +484,9 @@ For specific genres like Afro House, include established artists like Black Coff
             console.log(`Skipping additional song "${songData.title}" by "${songData.artist}" - missing album art or preview URL`);
             continue;
           }
+
+          // Add to seen songs set
+          seenSongs.add(songKey);
 
           const song: Song = {
             id: songId,
