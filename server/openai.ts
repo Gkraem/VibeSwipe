@@ -372,8 +372,14 @@ For specific genres like Afro House, include established artists like Black Coff
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
         
-        // Create unique identifier for duplicate checking
-        const songKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+        // Create normalized identifier for better duplicate checking
+        const normalizeText = (text: string) => text.toLowerCase().trim()
+          .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version)\b.*$/i, '') // Remove common suffixes
+          .trim();
+        
+        const songKey = `${normalizeText(songData.title)}-${normalizeText(songData.artist)}`;
         
         // Skip if we've already seen this song
         if (seenSongs.has(songKey)) {
@@ -457,8 +463,14 @@ For specific genres like Afro House, include established artists like Black Coff
           const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
           
-          // Check for duplicates
-          const songKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+          // Check for duplicates using normalized text
+          const normalizeText = (text: string) => text.toLowerCase().trim()
+            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version)\b.*$/i, '') // Remove common suffixes
+            .trim();
+          
+          const songKey = `${normalizeText(songData.title)}-${normalizeText(songData.artist)}`;
           if (seenSongs.has(songKey)) {
             console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
             continue;

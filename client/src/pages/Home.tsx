@@ -280,6 +280,10 @@ export default function Home() {
     setOriginalPrompt("");
     setGeneratedPlaylist(null);
     setGenerationProgress(0);
+    
+    // Trigger chat reset
+    const resetEvent = new Event('resetChat');
+    window.dispatchEvent(resetEvent);
   };
 
   const handleSwipe = (song: Song, direction: "left" | "right") => {

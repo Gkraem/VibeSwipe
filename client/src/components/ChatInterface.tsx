@@ -15,9 +15,10 @@ interface Message {
 
 interface ChatInterfaceProps {
   onSuggestionsGenerated: (songs: Song[], prompt: string) => void;
+  onReset?: () => void;
 }
 
-export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
+export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterfaceProps) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,9 +34,28 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const resetChat = () => {
+    setCurrentMessage("");
+    setMessages([
+      {
+        role: "assistant",
+        content: "Hi! I'm your AI playlist curator. Tell me about the vibe you're looking for - maybe something like \"upbeat songs for a road trip\" or \"chill indie for studying\"?"
+      }
+    ]);
+    setConversationId(null);
+    setGenerationProgress(0);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (onReset) {
+      window.addEventListener('resetChat', resetChat);
+      return () => window.removeEventListener('resetChat', resetChat);
+    }
+  }, [onReset]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
