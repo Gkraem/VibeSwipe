@@ -444,13 +444,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect(`/?error=spotify_token_failed&details=${JSON.stringify(tokenData)}`);
       }
 
-      // Store the Spotify access token temporarily in the user session
-      (req.session as any).spotifyAccessToken = tokenData.access_token;
-      (req.session as any).spotifyUserId = String(userId);
+      // Get Spotify user info
+      const userInfoResponse = await fetch('https://api.spotify.com/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`
+        }
+      });
+      
+      let spotifyUserData = null;
+      if (userInfoResponse.ok) {
+        spotifyUserData = await userInfoResponse.json();
+      }
+      
+      // Store tokens permanently in user profile
+      const cleanUserId = String(userId).replace('_mobile', '');
+      await storage.updateUser(cleanUserId, {
+        spotifyAccessToken: tokenData.access_token,
+        spotifyRefreshToken: tokenData.refresh_token,
+        spotifyUserId: spotifyUserData?.display_name || spotifyUserData?.id || 'Unknown',
+        spotifyConnected: new Date()
+      });
+      
+      console.log('=== SPOTIFY TOKENS STORED ===');
+      console.log('User ID:', cleanUserId);
+      console.log('Spotify User:', spotifyUserData?.display_name || 'Unknown');
+      console.log('============================');
       
       // Check if this is a mobile device based on state parameter
       const isMobile = String(userId).includes('_mobile');
-      const cleanUserId = String(userId).replace('_mobile', '');
       
       // Create a success page that closes the window (mobile-friendly)
       res.send(`
@@ -524,23 +545,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Playlist not found" });
       }
 
-      // Get user's Spotify access token from session
-      const accessToken = (req.session as any).spotifyAccessToken;
-      if (!accessToken) {
-        // Check if user has Spotify credentials stored
-        const user = await storage.getUser(userId);
-        if (user?.spotifyUsername) {
-          return res.status(401).json({ 
-            message: "Ready to connect your Spotify account for seamless exports",
-            requiresAuth: true,
-            hasSpotifyAccount: true
-          });
-        }
+      // Get user's stored Spotify tokens
+      const user = await storage.getUser(userId);
+      if (!user?.spotifyAccessToken) {
         return res.status(401).json({ 
-          message: "Spotify access token not found. Please connect to Spotify first.",
+          message: "Please link your Spotify account in Settings first",
           requiresAuth: true
         });
       }
+
+      let accessToken = user.spotifyAccessToken;
 
       // Get current Spotify user
       const spotifyUser = await spotifyService.getCurrentUser(accessToken);

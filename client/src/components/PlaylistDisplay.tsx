@@ -71,17 +71,16 @@ export function PlaylistDisplay({
         return;
       }
       
-      // Check if this is a Spotify auth error
+      // Check if this requires Spotify account linking
       try {
         const errorMessage = error instanceof Error ? error.message : String(error);
         
-        if (errorMessage.includes("401") || errorMessage.includes("Ready to connect")) {
+        if (errorMessage.includes("link your Spotify account")) {
           toast({
-            title: "Spotify Connection Required",
-            description: "Connecting to Spotify for mobile-friendly export...",
+            title: "Spotify Account Required",
+            description: "Please link your Spotify account in Settings to export playlists.",
+            variant: "destructive",
           });
-          
-          await handleSpotifyAuth();
           return;
         }
       } catch (e) {
@@ -96,65 +95,7 @@ export function PlaylistDisplay({
     },
   });
 
-  const handleSpotifyAuth = async () => {
-    try {
-      // Store playlist ID for after auth redirect
-      if (playlistId) {
-        localStorage.setItem('pendingSpotifyExport', playlistId.toString());
-      }
-      
-      // Get Spotify auth URL
-      const response = await apiRequest("GET", "/api/spotify/auth");
-      const data = await response.json();
-      
-      // Start polling for auth completion (works for both mobile and desktop)
-      localStorage.setItem('spotify_auth_pending', 'true');
-      startAuthPolling();
-      
-      // Simple redirect approach for all devices
-      window.location.href = data.authUrl;
-      
-    } catch (error) {
-      toast({
-        title: "Authentication Failed",
-        description: "Failed to connect to Spotify. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const startAuthPolling = () => {
-    const checkAuthStatus = async () => {
-      try {
-        const response = await apiRequest("GET", "/api/spotify/auth-status");
-        const data = await response.json();
-        
-        if (data.authenticated) {
-          localStorage.removeItem('spotify_auth_pending');
-          toast({
-            title: "Spotify Connected!",
-            description: "Now exporting your playlist...",
-          });
-          
-          // Trigger the export
-          if (playlistId) {
-            exportToSpotifyMutation.mutate(playlistId);
-          }
-          return;
-        }
-      } catch (error) {
-        // Continue polling if request fails
-      }
-      
-      // Continue polling if still pending
-      if (localStorage.getItem('spotify_auth_pending') === 'true') {
-        setTimeout(checkAuthStatus, 2000);
-      }
-    };
-    
-    // Start polling after a short delay
-    setTimeout(checkAuthStatus, 3000);
-  };
 
 
 
