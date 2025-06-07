@@ -179,14 +179,15 @@ export default function Home() {
 
   const generateMoreSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
-      // Start progress simulation
+      // Start progress simulation with more realistic timing
       setGenerationProgress(0);
       const progressInterval = setInterval(() => {
         setGenerationProgress(prev => {
-          if (prev >= 95) return prev;
-          return prev + Math.random() * 15;
+          if (prev >= 85) return prev + Math.random() * 2; // Slow down near the end
+          if (prev >= 70) return prev + Math.random() * 5; // Medium speed
+          return prev + Math.random() * 12; // Faster initially
         });
-      }, 500);
+      }, 800);
 
       try {
         const response = await apiRequest("POST", "/api/songs/generate", {
@@ -195,9 +196,9 @@ export default function Home() {
         });
         const result = await response.json();
         
-        // Complete progress
-        setGenerationProgress(100);
+        // Complete progress smoothly
         clearInterval(progressInterval);
+        setGenerationProgress(100);
         setTimeout(() => setGenerationProgress(0), 1000);
         
         return result;
@@ -322,8 +323,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Generate More Songs Button */}
-        {currentIndex >= suggestions.length && suggestions.length > 0 && (
+        {/* Generate More Songs Button - hide after playlist creation */}
+        {currentIndex >= suggestions.length && suggestions.length > 0 && !generatedPlaylist && (
           <div className="mb-6 text-center">
             <Button
               onClick={() => {
@@ -338,8 +339,8 @@ export default function Home() {
             </Button>
             {generateMoreSongsMutation.isPending && generationProgress > 0 && (
               <div className="mt-4 max-w-sm mx-auto space-y-2">
-                <Progress value={generationProgress} className="w-full h-2" />
-                <p className="text-sm text-gray-400">{Math.round(generationProgress)}% complete</p>
+                <Progress value={Math.min(generationProgress, 100)} className="w-full h-2" />
+                <p className="text-sm text-gray-400">{Math.min(Math.round(generationProgress), 100)}% complete</p>
               </div>
             )}
           </div>

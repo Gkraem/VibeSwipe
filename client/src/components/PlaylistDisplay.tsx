@@ -187,29 +187,7 @@ export function PlaylistDisplay({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (songs.length === 0 && onGeneratePlaylist) {
-    return (
-      <div className="text-center mb-8">
-        <Button 
-          onClick={onGeneratePlaylist}
-          disabled={isGenerating}
-          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-emerald-500 hover:to-green-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg disabled:opacity-50"
-        >
-          {isGenerating ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2" />
-              Generate My Playlist
-            </>
-          )}
-        </Button>
-      </div>
-    );
-  }
+  // Remove the duplicate "Generate My Playlist" button
 
   if (songs.length === 0) {
     return null;
