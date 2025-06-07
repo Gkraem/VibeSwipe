@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Music, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -41,7 +41,9 @@ export default function AuthPage() {
       const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (userData) => {
+      // Update the auth query cache with the new user data
+      queryClient.setQueryData(["/api/auth/user"], userData);
       toast({
         title: "Welcome back!",
         description: "Successfully signed in.",
@@ -62,7 +64,9 @@ export default function AuthPage() {
       const response = await apiRequest("POST", "/api/auth/register", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (userData) => {
+      // Update the auth query cache with the new user data
+      queryClient.setQueryData(["/api/auth/user"], userData);
       toast({
         title: "Welcome to Vibe Swipe!",
         description: "Account created successfully.",
