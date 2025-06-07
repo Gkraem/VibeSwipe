@@ -2,6 +2,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Music, ExternalLink, Sparkles } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Song } from "@shared/schema";
 
 interface PlaylistDisplayProps {
@@ -10,6 +14,7 @@ interface PlaylistDisplayProps {
   description?: string;
   onGeneratePlaylist?: () => void;
   isGenerating?: boolean;
+  playlistId?: number;
 }
 
 export function PlaylistDisplay({ 
@@ -17,8 +22,51 @@ export function PlaylistDisplay({
   title = "Your AI-Generated Playlist", 
   description,
   onGeneratePlaylist,
-  isGenerating = false
+  isGenerating = false,
+  playlistId
 }: PlaylistDisplayProps) {
+  const { toast } = useToast();
+
+  const exportToSpotifyMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/playlists/${id}/export-spotify`, {
+        method: "POST",
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Export Successful!",
+        description: data.message || "Your playlist has been exported to Spotify",
+      });
+      if (data.playlistUrl) {
+        window.open(data.playlistUrl, '_blank');
+      }
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "Failed to export playlist to Spotify",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportToSpotify = () => {
+    if (playlistId) {
+      exportToSpotifyMutation.mutate(playlistId);
+    }
+  };
   const totalDuration = songs.reduce((sum, song) => sum + (song.duration || 0), 0);
   
   const formatDuration = (seconds: number) => {

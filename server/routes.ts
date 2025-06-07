@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./spotifyAuth";
 import { generateChatResponse, generateSongSuggestions, generatePlaylistFromLikedSongs } from "./openai";
-import { insertMessageSchema, insertConversationSchema, insertPlaylistSchema, insertSwipeHistorySchema } from "@shared/schema";
+import { insertMessageSchema, insertConversationSchema, insertPlaylistSchema, insertSwipeHistorySchema, type Song } from "@shared/schema";
+import { spotifyService } from "./spotifyApi";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -208,6 +209,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching playlist:", error);
       res.status(500).json({ message: "Failed to fetch playlist" });
+    }
+  });
+
+  // Spotify export route
+  app.post('/api/playlists/:id/export-spotify', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const playlistId = parseInt(req.params.id);
+      
+      const playlist = await storage.getPlaylist(playlistId);
+      if (!playlist || playlist.userId !== userId) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      // Get user's Spotify access token from session
+      const accessToken = req.user.accessToken;
+      if (!accessToken) {
+        return res.status(401).json({ message: "Spotify access token not found. Please log in again." });
+      }
+
+      // Get current Spotify user
+      const spotifyUser = await spotifyService.getCurrentUser(accessToken);
+
+      // Export playlist to Spotify
+      const result = await spotifyService.exportPlaylistToSpotify(
+        accessToken,
+        spotifyUser.id,
+        playlist.title,
+        JSON.parse(playlist.songs as string) as Song[],
+        playlist.description || undefined
+      );
+
+      res.json({
+        success: true,
+        playlistUrl: result.playlistUrl,
+        message: `Successfully exported ${result.successCount} of ${result.totalCount} songs to Spotify!`,
+        successCount: result.successCount,
+        totalCount: result.totalCount,
+      });
+    } catch (error) {
+      console.error("Error exporting to Spotify:", error);
+      res.status(500).json({ 
+        message: "Failed to export playlist to Spotify. Please try again.",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
