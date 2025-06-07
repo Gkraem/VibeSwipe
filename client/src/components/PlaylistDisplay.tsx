@@ -20,6 +20,7 @@ interface PlaylistDisplayProps {
   onUpdateTitle?: (title: string) => void;
   editable?: boolean;
   spotifyUrl?: string;
+  onSpotifyExport?: (spotifyUrl: string) => void;
 }
 
 export function PlaylistDisplay({ 
@@ -31,7 +32,8 @@ export function PlaylistDisplay({
   playlistId,
   onUpdateTitle,
   editable = false,
-  spotifyUrl
+  spotifyUrl,
+  onSpotifyExport
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -48,7 +50,7 @@ export function PlaylistDisplay({
         description: data.message || "Your playlist has been exported to Spotify",
       });
       if (data.playlistUrl) {
-        window.open(data.playlistUrl, '_blank');
+        onSpotifyExport?.(data.playlistUrl);
       }
     },
     onError: (error) => {

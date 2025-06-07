@@ -20,6 +20,7 @@ export default function Home() {
     title: string;
     description: string;
     songs: Song[];
+    spotifyUrl?: string;
   } | null>(null);
 
   const updatePlaylistTitleMutation = useMutation({
@@ -93,6 +94,7 @@ export default function Home() {
         title: playlist.title,
         description: playlist.description,
         songs: playlist.songs,
+        spotifyUrl: playlist.spotifyUrl,
       });
       toast({
         title: "Playlist Created!",
@@ -262,10 +264,14 @@ export default function Home() {
               description={generatedPlaylist.description}
               playlistId={generatedPlaylist.id}
               editable={true}
+              spotifyUrl={generatedPlaylist.spotifyUrl}
               onUpdateTitle={(newTitle) => {
                 if (generatedPlaylist.id) {
                   updatePlaylistTitleMutation.mutate({ id: generatedPlaylist.id, title: newTitle });
                 }
+              }}
+              onSpotifyExport={(spotifyUrl) => {
+                setGeneratedPlaylist(prev => prev ? { ...prev, spotifyUrl } : null);
               }}
             />
           </div>
