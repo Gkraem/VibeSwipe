@@ -20,6 +20,7 @@ interface PlaylistDisplayProps {
   onGeneratePlaylist?: () => void;
   isGenerating?: boolean;
   generationProgress?: number;
+  timeRemaining?: number;
   playlistId?: number;
   onUpdateTitle?: (title: string) => void;
   editable?: boolean;
@@ -34,6 +35,7 @@ export function PlaylistDisplay({
   onGeneratePlaylist,
   isGenerating = false,
   generationProgress = 0,
+  timeRemaining = 0,
   playlistId,
   onUpdateTitle,
   editable = false,

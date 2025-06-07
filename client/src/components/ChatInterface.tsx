@@ -28,6 +28,7 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
   ]);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -61,15 +62,15 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      // Start smooth time-based progress
-      setGenerationProgress(0);
+      // Start countdown timer
+      setTimeRemaining(31);
       const startTime = Date.now();
-      const expectedDuration = 25000; // 25 seconds expected duration
+      const expectedDuration = 31000; // 31 seconds expected duration
       
-      const progressInterval = setInterval(() => {
+      const countdownInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const timeProgress = Math.min((elapsed / expectedDuration) * 100, 95);
-        setGenerationProgress(timeProgress);
+        const remaining = Math.max(0, Math.ceil((expectedDuration - elapsed) / 1000));
+        setTimeRemaining(remaining);
       }, 100);
 
       try {
@@ -79,15 +80,14 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
         });
         const result = await response.json();
         
-        // Complete progress
-        setGenerationProgress(100);
-        clearInterval(progressInterval);
-        setTimeout(() => setGenerationProgress(0), 1000);
+        // Complete countdown
+        clearInterval(countdownInterval);
+        setTimeRemaining(0);
         
         return result;
       } catch (error) {
-        clearInterval(progressInterval);
-        setGenerationProgress(0);
+        clearInterval(countdownInterval);
+        setTimeRemaining(0);
         throw error;
       }
     },
@@ -193,10 +193,14 @@ export function ChatInterface({ onSuggestionsGenerated, onReset }: ChatInterface
               </div>
               <div className="bg-gray-700/50 text-gray-200 rounded-2xl rounded-tl-md p-4 max-w-xs">
                 <p className="text-sm mb-2">Curating your perfect playlist...</p>
-                <div className="space-y-1">
-                  <Progress value={generationProgress} className="w-full h-2" />
-                  <p className="text-xs text-gray-400">{Math.round(generationProgress)}% complete</p>
-                </div>
+                {timeRemaining > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-blue-300">
+                      Time remaining: {timeRemaining}s
+                    </p>
+                    <p className="text-xs text-gray-400">Finding real songs with previews...</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
