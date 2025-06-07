@@ -307,29 +307,79 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
   } catch (error) {
     console.error("OpenAI API error:", error);
     
-    // Return demo suggestions based on user input
-    if (prompt.toLowerCase().includes('indie') || prompt.toLowerCase().includes('study')) {
+    // Always use dynamic song generation for music requests
+    if (prompt.toLowerCase().includes('music') || prompt.toLowerCase().includes('song') || prompt.toLowerCase().includes('playlist') || 
+        prompt.toLowerCase().includes('indie') || prompt.toLowerCase().includes('study') || prompt.toLowerCase().includes('workout') ||
+        prompt.toLowerCase().includes('chill') || prompt.toLowerCase().includes('relax') || prompt.toLowerCase().includes('electronic') ||
+        prompt.toLowerCase().includes('jazz') || prompt.toLowerCase().includes('pop') || prompt.toLowerCase().includes('dance')) {
+      
+      const dynamicSongs = await generateSongSuggestions(prompt);
       return {
-        message: "Perfect! I've got some great indie tracks for studying. Let me show you some recommendations to swipe through:",
-        suggestions: MOCK_SONGS.filter((song: Song) => 
-          song.genres.includes('Indie') || 
-          song.genres.includes('Alternative') ||
-          (song.energy !== undefined && song.energy < 0.6)
-        ).slice(0, 10)
-      };
-    }
-    
-    // For any other music request, provide a sample of songs
-    if (prompt.toLowerCase().includes('music') || prompt.toLowerCase().includes('song') || prompt.toLowerCase().includes('playlist')) {
-      return {
-        message: "Great! I've curated some tracks based on your request. Start swiping to build your perfect playlist:",
-        suggestions: MOCK_SONGS.slice(0, 12)
+        message: "Great! I've curated 50 tracks based on your request. Start swiping to build your perfect playlist:",
+        suggestions: dynamicSongs
       };
     }
     
     return {
       message: "I'd love to help you create an amazing playlist! Try describing something like 'indie for studying' or 'upbeat workout music' to get started.",
     };
+  }
+}
+
+export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
+  try {
+    // Try AI generation first
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `Generate 50 unique song recommendations based on the user's vibe. Return JSON with this structure:
+          {
+            "songs": [
+              {
+                "id": "unique_id",
+                "title": "Song Title",
+                "artist": "Artist Name",
+                "album": "Album Name", 
+                "duration": 180,
+                "genres": ["Genre1", "Genre2"],
+                "energy": 0.7,
+                "valence": 0.6,
+                "tempo": 120
+              }
+            ]
+          }`
+        },
+        {
+          role: "user",
+          content: `Generate 50 songs for: "${prompt}"`
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    const generatedSongs = result.songs || [];
+    
+    const songs: Song[] = generatedSongs.map((song: any, index: number) => ({
+      id: song.id || `ai_${Date.now()}_${index}`,
+      title: song.title || "Unknown Song",
+      artist: song.artist || "Unknown Artist", 
+      album: song.album || "Unknown Album",
+      albumArt: getRandomAlbumArt(),
+      duration: song.duration || 180,
+      genres: Array.isArray(song.genres) ? song.genres : ["Pop"],
+      energy: typeof song.energy === 'number' ? song.energy : 0.5,
+      valence: typeof song.valence === 'number' ? song.valence : 0.5,
+      tempo: typeof song.tempo === 'number' ? song.tempo : 120,
+    }));
+    
+    return songs.filter(song => !excludeIds.includes(song.id)).slice(0, 50);
+    
+  } catch (error) {
+    console.error("AI generation failed, using intelligent fallback:", error);
+    return generateFallbackSongs(prompt, excludeIds);
   }
 }
 
@@ -346,83 +396,6 @@ function getRandomAlbumArt(): string {
     "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
   ];
   return albumArts[Math.floor(Math.random() * albumArts.length)];
-}
-
-export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [
-        {
-          role: "system",
-          content: `You are a music discovery AI that generates diverse, realistic song recommendations. Based on the user's prompt, create 50 unique songs that match their vibe.
-
-          Generate songs that feel authentic with:
-          - Real-sounding artist names (mix of established and emerging artists)
-          - Believable song titles that match the genre/mood
-          - Accurate genre classifications
-          - Appropriate energy/valence/tempo values for the style
-          - Varied release years and album names
-          - Different artists (avoid repeating artists too much)
-          
-          Return JSON with exactly 50 songs:
-          {
-            "songs": [
-              {
-                "id": "unique_id",
-                "title": "Song Title",
-                "artist": "Artist Name",
-                "album": "Album Name", 
-                "duration": 180,
-                "genres": ["Genre1", "Genre2"],
-                "energy": 0.7,
-                "valence": 0.6,
-                "tempo": 120
-              }
-            ]
-          }
-          
-          Energy: 0-1 (0=very calm, 1=very energetic)
-          Valence: 0-1 (0=sad/angry, 1=happy/uplifting)
-          Tempo: BPM (60-200 typical range)
-          Duration: seconds (120-300 typical)`
-        },
-        {
-          role: "user",
-          content: `Generate 50 songs for this vibe: "${prompt}"
-          
-          Make sure each song feels unique and authentic. Vary the artists, song titles, and musical characteristics while staying true to the requested vibe.`
-        }
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    const generatedSongs = result.songs || [];
-    
-    // Transform generated songs to match our Song interface
-    const songs: Song[] = generatedSongs.map((song: any, index: number) => ({
-      id: song.id || `generated_${Date.now()}_${index}`,
-      title: song.title || "Unknown Song",
-      artist: song.artist || "Unknown Artist", 
-      album: song.album || "Unknown Album",
-      albumArt: getRandomAlbumArt(),
-      duration: song.duration || 180,
-      genres: Array.isArray(song.genres) ? song.genres : ["Pop"],
-      energy: typeof song.energy === 'number' ? song.energy : 0.5,
-      valence: typeof song.valence === 'number' ? song.valence : 0.5,
-      tempo: typeof song.tempo === 'number' ? song.tempo : 120,
-    }));
-    
-    // Filter out excluded songs and return up to 50
-    const filteredSongs = songs.filter(song => !excludeIds.includes(song.id));
-    return filteredSongs.slice(0, 50);
-    
-  } catch (error) {
-    console.error("Error generating song suggestions:", error);
-    // Generate varied songs based on the prompt even without AI
-    return generateFallbackSongs(prompt, excludeIds);
-  }
 }
 
 // Generate fallback songs that vary based on user prompt
@@ -505,16 +478,30 @@ function generateFallbackSongs(prompt: string, excludeIds: string[] = []): Song[
     const title = template.titles[Math.floor(Math.random() * template.titles.length)];
     const genre = template.genres[Math.floor(Math.random() * template.genres.length)];
     
-    // Add variation to make each song unique
-    const uniqueTitle = `${title} ${i > 25 ? '(Remix)' : i > 40 ? '(Acoustic)' : ''}`.trim();
-    const uniqueArtist = i % 7 === 0 ? `${artist} ft. Guest` : artist;
+    // Add significant variation to make each song unique
+    const titleVariations = ['', '(Extended Mix)', '(Radio Edit)', '(VIP Mix)', '(Acoustic)', '(Live)', '(Remix)', '(Deluxe)', '(Original Mix)', '(Club Mix)'];
+    const artistVariations = ['', 'feat. Various Artists', '& Friends', 'ft. Guest Vocals', 'with Special Guest'];
     
+    const uniqueTitle = `${title} ${titleVariations[i % titleVariations.length]}`.trim();
+    const uniqueArtist = i % 5 === 0 ? `${artist} ${artistVariations[Math.floor(i / 5) % artistVariations.length]}`.trim() : artist;
+    
+    const albumArts = [
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300", 
+      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1520637836862-4d197d17c50a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1517230878791-4d28214057c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+      "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
+    ];
+
     const song: Song = {
       id: `${selectedGenre}_${timestamp}_${i}`,
       title: uniqueTitle,
       artist: uniqueArtist,
       album: `${selectedGenre.charAt(0).toUpperCase() + selectedGenre.slice(1)} Collection Vol. ${Math.floor(i / 10) + 1}`,
-      albumArt: getRandomAlbumArt(),
+      albumArt: albumArts[Math.floor(Math.random() * albumArts.length)],
       duration: Math.floor(Math.random() * 120) + 180, // 3-5 minutes
       genres: [genre, template.genres[Math.floor(Math.random() * template.genres.length)]],
       energy: template.energy[0] + Math.random() * (template.energy[1] - template.energy[0]),
