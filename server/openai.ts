@@ -344,9 +344,14 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
     
     for (const query of searchQueries) {
       try {
-        const tracks = await spotifyService.searchTracks(spotifyToken, query, 10);
+        const tracks = await spotifyService.searchTracks(spotifyToken, query, 20);
         
         for (const track of tracks) {
+          // Only include tracks that have preview URLs
+          if (!track.preview_url) {
+            continue;
+          }
+          
           const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
           
           // Skip duplicates and excluded songs
@@ -367,16 +372,10 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
             energy: Math.random() * 0.4 + 0.5, // Realistic energy range
             valence: Math.random() * 0.6 + 0.3, // Realistic valence range  
             tempo: Math.floor(Math.random() * 60) + 90, // 90-150 BPM
-            previewUrl: track.preview_url || undefined
+            previewUrl: track.preview_url
           };
           
-          // Debug log for preview URLs
-          if (track.preview_url) {
-            console.log(`Track "${track.name}" has preview URL:`, track.preview_url);
-          } else {
-            console.log(`Track "${track.name}" has no preview URL`);
-          }
-          
+
           allSongs.push(song);
           
           if (allSongs.length >= 50) break;
@@ -504,10 +503,15 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
     if (songs.length >= needed) break;
     
     try {
-      const tracks = await spotifyService.searchTracks(spotifyToken, query, "5");
+      const tracks = await spotifyService.searchTracks(spotifyToken, query, 5);
       
       for (const track of tracks) {
         if (songs.length >= needed) break;
+        
+        // Only include tracks with preview URLs
+        if (!track.preview_url) {
+          continue;
+        }
         
         const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
         
@@ -528,7 +532,7 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
           energy: Math.random() * 0.4 + 0.5,
           valence: Math.random() * 0.6 + 0.3,
           tempo: Math.floor(Math.random() * 60) + 90,
-          previewUrl: track.preview_url || undefined
+          previewUrl: track.preview_url
         };
         
         songs.push(song);
