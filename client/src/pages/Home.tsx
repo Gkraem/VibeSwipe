@@ -58,19 +58,15 @@ export default function Home() {
   });
   const { toast } = useToast();
 
-  // Recovery mechanism for generated playlists
+  // Clear home screen on app load - no recovery mechanism
   useEffect(() => {
-    const savedPlaylist = localStorage.getItem('lastGeneratedPlaylist');
-    if (savedPlaylist && !generatedPlaylist) {
-      try {
-        const parsed = JSON.parse(savedPlaylist);
-        console.log('Recovering playlist from localStorage:', parsed);
-        setGeneratedPlaylist(parsed);
-      } catch (error) {
-        console.error('Error recovering playlist:', error);
-        localStorage.removeItem('lastGeneratedPlaylist');
-      }
-    }
+    localStorage.removeItem('lastGeneratedPlaylist');
+    setGeneratedPlaylist(null);
+    setSuggestions([]);
+    setCurrentIndex(0);
+    setLikedSongs([]);
+    setOriginalPrompt("");
+    setGenerationProgress(0);
   }, []);
 
   // Handle Spotify authentication return
@@ -443,9 +439,9 @@ export default function Home() {
         )}
       </main>
 
-      {/* Reset Search Button - only show when there's content to reset */}
+      {/* Reset Search Button - fixed at bottom of page */}
       {(suggestions.length > 0 || likedSongs.length > 0 || generatedPlaylist) && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
           <Button
             onClick={handleResetSearch}
             variant="destructive"

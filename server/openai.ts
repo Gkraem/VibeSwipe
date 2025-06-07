@@ -317,6 +317,22 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
 }
 
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
+  const songs: Song[] = [];
+  const seenSongs = new Set<string>();
+  
+  // Enhanced normalization function for absolute duplicate prevention
+  const createSongKey = (title: string, artist: string): string => {
+    const normalize = (text: string) => text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '') // Remove all punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version|remaster|live|acoustic|original|mix)\b.*$/i, '') // Remove suffixes
+      .trim();
+    
+    return `${normalize(title)}:::${normalize(artist)}`;
+  };
+
   try {
     // Use OpenAI to generate a curated list of 40 songs initially (to account for filtering)
     const response = await openai.chat.completions.create({
@@ -372,14 +388,8 @@ For specific genres like Afro House, include established artists like Black Coff
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
         
-        // Create normalized identifier for better duplicate checking
-        const normalizeText = (text: string) => text.toLowerCase().trim()
-          .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-          .replace(/\s+/g, ' ') // Normalize whitespace
-          .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version)\b.*$/i, '') // Remove common suffixes
-          .trim();
-        
-        const songKey = `${normalizeText(songData.title)}-${normalizeText(songData.artist)}`;
+        // Use enhanced normalization for absolute duplicate prevention
+        const songKey = createSongKey(songData.title, songData.artist);
         
         // Skip if we've already seen this song
         if (seenSongs.has(songKey)) {
@@ -463,14 +473,8 @@ For specific genres like Afro House, include established artists like Black Coff
           const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
           
-          // Check for duplicates using normalized text
-          const normalizeText = (text: string) => text.toLowerCase().trim()
-            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .replace(/\b(feat|ft|featuring|remix|edit|extended|radio|version)\b.*$/i, '') // Remove common suffixes
-            .trim();
-          
-          const songKey = `${normalizeText(songData.title)}-${normalizeText(songData.artist)}`;
+          // Use enhanced normalization for absolute duplicate prevention
+          const songKey = createSongKey(songData.title, songData.artist);
           if (seenSongs.has(songKey)) {
             console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
             continue;
@@ -841,7 +845,7 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
       for (const track of tracks) {
         if (songs.length >= needed) break;
         
-        const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
+        const trackKey = createSongKey(track.name, track.artists[0].name);
         
         if (seenTracks.has(trackKey) || excludeIds.includes(track.id)) {
           continue;
