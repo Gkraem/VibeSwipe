@@ -318,13 +318,13 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
 
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
   try {
-    // Use OpenAI to generate a curated list of 50 songs
+    // Use OpenAI to generate a curated list of 40 songs initially (to account for filtering)
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: `You are a music expert curator. Generate exactly 25 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on streaming platforms. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
+          content: `You are a music expert curator. Generate exactly 40 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on major streaming platforms like Spotify. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
 Example format:
 {
@@ -341,11 +341,11 @@ Example format:
   ]
 }
 
-Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
+Make sure all songs are real, popular tracks that are definitely available on Spotify. Avoid obscure or made-up songs.`
         },
         {
           role: "user",
-          content: `Generate 25 songs for: ${prompt}`
+          content: `Generate 40 songs for: ${prompt}`
         }
       ],
       response_format: { type: "json_object" },
@@ -355,10 +355,10 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     const songs: Song[] = [];
     
     if (result.songs && Array.isArray(result.songs)) {
-      // Process up to 25 songs from the result
-      const songsToProcess = Math.min(result.songs.length, 25);
+      // Process all songs from the result (up to 40)
+      const songsToProcess = result.songs.length;
       
-      for (let i = 0; i < songsToProcess; i++) {
+      for (let i = 0; i < songsToProcess && songs.length < 25; i++) {
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
         
@@ -381,17 +381,23 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
           previewUrlValue: spotifyData.previewUrl
         });
 
+        // Only include songs that have both album art AND preview URL
+        if (!spotifyData.albumArt || !spotifyData.previewUrl) {
+          console.log(`Skipping "${songData.title}" by "${songData.artist}" - missing album art or preview URL`);
+          continue;
+        }
+
         const song: Song = {
           id: songId,
           title: songData.title,
           artist: songData.artist,
           album: songData.album || `${songData.artist} - Singles`,
-          albumArt: spotifyData.albumArt || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
+          albumArt: spotifyData.albumArt,
           duration: songData.duration || Math.floor(Math.random() * 120) + 180, // 3-5 minutes
           genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
           energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
           valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-          previewUrl: spotifyData.previewUrl || undefined
+          previewUrl: spotifyData.previewUrl
         };
         
         songs.push(song);
@@ -399,16 +405,20 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     }
     
     // Ensure we always return exactly 25 songs by requesting more if needed
-    if (songs.length < 25) {
-      console.log(`Generated ${songs.length} songs, requesting ${25 - songs.length} more...`);
-      const additionalNeeded = 25 - songs.length;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (songs.length < 25 && attempts < maxAttempts) {
+      attempts++;
+      const additionalNeeded = Math.max(25 - songs.length, 20); // Request at least 20 to account for filtering
+      console.log(`Generated ${songs.length} songs, requesting ${additionalNeeded} more (attempt ${attempts})...`);
       
       const additionalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `Generate exactly ${additionalNeeded} more songs for the same request. Return as JSON with "songs" array. Make sure all songs are real, popular tracks.`
+            content: `Generate exactly ${additionalNeeded} more songs for the same request. Focus on very popular, mainstream tracks that are definitely available on Spotify. Return as JSON with "songs" array. Make sure all songs are real, popular tracks from well-known artists.`
           },
           {
             role: "user",
@@ -440,17 +450,23 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
             previewUrlValue: spotifyData.previewUrl
           });
 
+          // Only include songs that have both album art AND preview URL
+          if (!spotifyData.albumArt || !spotifyData.previewUrl) {
+            console.log(`Skipping additional song "${songData.title}" by "${songData.artist}" - missing album art or preview URL`);
+            continue;
+          }
+
           const song: Song = {
             id: songId,
             title: songData.title,
             artist: songData.artist,
             album: songData.album || `${songData.artist} - Singles`,
-            albumArt: spotifyData.albumArt || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
+            albumArt: spotifyData.albumArt,
             duration: songData.duration || Math.floor(Math.random() * 120) + 180,
             genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
             energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
             valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-            previewUrl: spotifyData.previewUrl || undefined
+            previewUrl: spotifyData.previewUrl
           };
           
           songs.push(song);
