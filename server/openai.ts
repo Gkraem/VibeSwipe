@@ -384,7 +384,7 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
           genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
           energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
           valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-          previewUrl: spotifyData.previewUrl || undefined
+          previewUrl: spotifyData.previewUrl ?? undefined
         };
         
         songs.push(song);
@@ -436,7 +436,7 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
             genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
             energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
             valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-            previewUrl: spotifyData.previewUrl
+            previewUrl: spotifyData.previewUrl || undefined
           };
           
           songs.push(song);
