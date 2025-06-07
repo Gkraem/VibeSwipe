@@ -16,6 +16,8 @@ interface AuthFormData {
   password: string;
   firstName?: string;
   lastName?: string;
+  spotifyUsername?: string;
+  spotifyPassword?: string;
 }
 
 export default function AuthPage() {
@@ -27,7 +29,9 @@ export default function AuthPage() {
     email: "",
     password: "",
     firstName: "",
-    lastName: ""
+    lastName: "",
+    spotifyUsername: "",
+    spotifyPassword: ""
   });
 
   // Redirect if already logged in
@@ -287,6 +291,36 @@ export default function AuthPage() {
                           <Eye className="h-4 w-4 text-gray-400" />
                         )}
                       </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-sm font-medium text-gray-600">Spotify Integration (Optional)</h3>
+                    <p className="text-xs text-gray-500">Connect your Spotify account to export playlists directly</p>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="spotify-username">Spotify Username/Email</Label>
+                      <Input
+                        id="spotify-username"
+                        placeholder="Your Spotify username or email"
+                        value={formData.spotifyUsername}
+                        onChange={(e) => setFormData(prev => ({ ...prev, spotifyUsername: e.target.value }))}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="spotify-password">Spotify Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="spotify-password"
+                          type="password"
+                          placeholder="Your Spotify password"
+                          value={formData.spotifyPassword}
+                          onChange={(e) => setFormData(prev => ({ ...prev, spotifyPassword: e.target.value }))}
+                          disabled={isLoading}
+                        />
+                      </div>
                     </div>
                   </div>
                   

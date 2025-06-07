@@ -86,7 +86,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
+      const { email, password, firstName, lastName, spotifyUsername, spotifyPassword } = req.body;
       
       if (!email || !password || !firstName || !lastName) {
         return res.status(400).json({ message: "All fields are required" });
@@ -102,6 +102,8 @@ export function setupAuth(app: Express) {
         password: await hashPassword(password),
         firstName,
         lastName,
+        spotifyUsername: spotifyUsername || null,
+        spotifyPassword: spotifyPassword ? await hashPassword(spotifyPassword) : null,
         id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       });
 
