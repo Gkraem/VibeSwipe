@@ -50,18 +50,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            email: userData.email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profileImageUrl: userData.profileImageUrl,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error: any) {
+      // If there's an email conflict, try to update the existing user
+      if (error.code === '23505' && error.constraint === 'users_email_unique') {
+        // Find existing user by email and update their ID to match Spotify ID
+        if (userData.email) {
+          await db
+            .update(users)
+            .set({
+              id: userData.id,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              profileImageUrl: userData.profileImageUrl,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.email, userData.email));
+          
+          const [user] = await db.select().from(users).where(eq(users.id, userData.id));
+          return user;
+        }
+      }
+      throw error;
+    }
   }
 
   // Conversation operations

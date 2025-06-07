@@ -95,10 +95,10 @@ export async function setupAuth(app: Express) {
   }));
 
   app.get("/api/auth/spotify/callback",
-    passport.authenticate("spotify", { failureRedirect: "/" }),
-    (req, res) => {
-      res.redirect("/");
-    }
+    passport.authenticate("spotify", { 
+      failureRedirect: "/?error=auth_failed",
+      successRedirect: "/?success=logged_in"
+    })
   );
 
   app.get("/api/logout", (req, res) => {
