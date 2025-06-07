@@ -301,6 +301,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Spotify connection status
+  app.get('/api/spotify/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.spotifyAccessToken && user?.spotifyConnected) {
+        res.json({
+          connected: true,
+          displayName: user.spotifyUserId || 'Your Spotify Account',
+          connectedAt: user.spotifyConnected
+        });
+      } else {
+        res.json({ connected: false });
+      }
+    } catch (error) {
+      console.error("Error checking Spotify status:", error);
+      res.json({ connected: false });
+    }
+  });
+
+  // Unlink Spotify account
+  app.delete('/api/spotify/unlink', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      await storage.updateUser(userId, {
+        spotifyAccessToken: null,
+        spotifyRefreshToken: null,
+        spotifyUserId: null,
+        spotifyConnected: null
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unlinking Spotify:", error);
+      res.status(500).json({ message: "Failed to unlink Spotify account" });
+    }
+  });
+
   // Check Spotify auth status for polling
   app.get('/api/spotify/auth-status', isAuthenticated, (req: any, res) => {
     try {

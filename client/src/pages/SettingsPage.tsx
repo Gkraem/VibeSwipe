@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Music, Eye, EyeOff, Loader2, Save, ArrowLeft } from "lucide-react";
+import { User, Lock, Music, Eye, EyeOff, Loader2, Save, ArrowLeft, CheckCircle, Link as LinkIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -37,6 +37,50 @@ export default function SettingsPage() {
     confirmPassword: "",
     spotifyUsername: "",
     spotifyPassword: ""
+  });
+
+  // Query Spotify connection status
+  const { data: spotifyStatus } = useQuery({
+    queryKey: ["/api/spotify/status"],
+    refetchInterval: 5000, // Check every 5 seconds for auth completion
+  });
+
+  const linkSpotifyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/spotify/auth");
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      window.location.href = data.authUrl;
+    },
+    onError: (error) => {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect to Spotify. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unlinkSpotifyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", "/api/spotify/unlink");
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/spotify/status"] });
+      toast({
+        title: "Spotify Disconnected",
+        description: "Your Spotify account has been disconnected.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect Spotify. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateProfileMutation = useMutation({
@@ -304,73 +348,73 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Spotify Integration */}
+        {/* Spotify Account Linking */}
         <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-white">
               <Music className="h-5 w-5" />
-              <span>Spotify Integration</span>
+              <span>Spotify Account</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-400">
-              Add or update your Spotify credentials for seamless playlist exports
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="spotify-username" className="text-gray-200">Spotify Username/Email</Label>
-              <Input
-                id="spotify-username"
-                value={formData.spotifyUsername}
-                onChange={(e) => setFormData(prev => ({ ...prev, spotifyUsername: e.target.value }))}
-                className="bg-gray-800/50 border-gray-700 text-white"
-                placeholder="Your Spotify username or email"
-                disabled={updateProfileMutation.isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="spotify-password" className="text-gray-200">Spotify Password</Label>
-              <div className="relative">
-                <Input
-                  id="spotify-password"
-                  type={showPasswords.spotify ? "text" : "password"}
-                  value={formData.spotifyPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, spotifyPassword: e.target.value }))}
-                  className="bg-gray-800/50 border-gray-700 text-white pr-10"
-                  placeholder="Your Spotify password"
-                  disabled={updateProfileMutation.isPending}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPasswords(prev => ({ ...prev, spotify: !prev.spotify }))}
+            {spotifyStatus?.connected ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-green-900/20 border border-green-700/50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  <div>
+                    <p className="text-green-400 font-medium">Spotify Connected</p>
+                    <p className="text-sm text-gray-400">
+                      Connected to: {spotifyStatus.displayName || 'Your Spotify Account'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Connected on {new Date(spotifyStatus.connectedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => unlinkSpotifyMutation.mutate()}
+                  disabled={unlinkSpotifyMutation.isPending}
+                  variant="outline"
+                  className="w-full border-red-600 text-red-400 hover:bg-red-600/10"
                 >
-                  {showPasswords.spotify ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  {unlinkSpotifyMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Disconnecting...
+                    </>
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    "Disconnect Spotify Account"
                   )}
                 </Button>
               </div>
-            </div>
-            <Button 
-              onClick={handleUpdateSpotify}
-              disabled={updateProfileMutation.isPending}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              {updateProfileMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Update Spotify Credentials
-                </>
-              )}
-            </Button>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                  <p className="text-gray-200 font-medium mb-2">Connect Your Spotify Account</p>
+                  <p className="text-sm text-gray-400">
+                    Link your Spotify account to export playlists directly without repeated authorization. 
+                    This connection stays active until you disconnect it.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => linkSpotifyMutation.mutate()}
+                  disabled={linkSpotifyMutation.isPending}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {linkSpotifyMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="mr-2 h-4 w-4" />
+                      Link Spotify Account
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

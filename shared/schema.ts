@@ -34,6 +34,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   spotifyUsername: varchar("spotify_username"),
   spotifyPassword: varchar("spotify_password"),
+  spotifyAccessToken: varchar("spotify_access_token"),
+  spotifyRefreshToken: varchar("spotify_refresh_token"),
+  spotifyUserId: varchar("spotify_user_id"),
+  spotifyConnected: timestamp("spotify_connected"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
