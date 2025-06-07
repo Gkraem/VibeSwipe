@@ -58,6 +58,21 @@ export default function Home() {
   });
   const { toast } = useToast();
 
+  // Recovery mechanism for generated playlists
+  useEffect(() => {
+    const savedPlaylist = localStorage.getItem('lastGeneratedPlaylist');
+    if (savedPlaylist && !generatedPlaylist) {
+      try {
+        const parsed = JSON.parse(savedPlaylist);
+        console.log('Recovering playlist from localStorage:', parsed);
+        setGeneratedPlaylist(parsed);
+      } catch (error) {
+        console.error('Error recovering playlist:', error);
+        localStorage.removeItem('lastGeneratedPlaylist');
+      }
+    }
+  }, []);
+
   // Handle pending Spotify export after auth redirect
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -123,13 +138,20 @@ export default function Home() {
       return await response.json();
     },
     onSuccess: (playlist) => {
-      setGeneratedPlaylist({
+      console.log('Playlist created successfully:', playlist);
+      const playlistData = {
         id: playlist.id,
         title: playlist.title,
         description: playlist.description,
         songs: playlist.songs,
         spotifyUrl: playlist.spotifyUrl,
-      });
+      };
+      setGeneratedPlaylist(playlistData);
+      console.log('Generated playlist state set:', playlistData);
+      
+      // Persist to localStorage for recovery
+      localStorage.setItem('lastGeneratedPlaylist', JSON.stringify(playlistData));
+      
       toast({
         title: "Playlist Created!",
         description: `"${playlist.title}" has been saved to your library.`,
@@ -261,6 +283,8 @@ export default function Home() {
   };
 
   const handleGeneratePlaylist = () => {
+    console.log('handleGeneratePlaylist called with:', { likedSongs: likedSongs.length, originalPrompt });
+    
     if (likedSongs.length === 0) {
       toast({
         title: "No songs selected",
@@ -270,6 +294,7 @@ export default function Home() {
       return;
     }
 
+    console.log('Creating playlist with songs:', likedSongs);
     createPlaylistMutation.mutate({
       songs: likedSongs,
       originalPrompt,
@@ -364,13 +389,13 @@ export default function Home() {
           </div>
         )}
 
-        {/* Show liked songs preview if no playlist generated yet */}
-        {likedSongs.length > 0 && !generatedPlaylist && currentIndex < suggestions.length && (
+        {/* Show liked songs preview and manual playlist creation */}
+        {likedSongs.length > 0 && !generatedPlaylist && (
           <div className="mb-8">
             <div className="text-center p-6 bg-gray-800/50 rounded-xl border border-gray-700">
               <h4 className="text-lg font-bold text-white mb-2">Songs You've Liked</h4>
               <p className="text-gray-400 mb-4">{likedSongs.length} songs ready for your playlist</p>
-              <div className="flex flex-wrap gap-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center mb-4">
                 {likedSongs.slice(0, 5).map((song) => (
                   <span 
                     key={song.id}
@@ -385,6 +410,13 @@ export default function Home() {
                   </span>
                 )}
               </div>
+              <Button
+                onClick={handleGeneratePlaylist}
+                disabled={createPlaylistMutation.isPending}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-emerald-500 hover:to-green-500 text-white px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105"
+              >
+                {createPlaylistMutation.isPending ? "Creating..." : "Create Playlist Now"}
+              </Button>
             </div>
           </div>
         )}
