@@ -15,6 +15,7 @@ export default function Home() {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [originalPrompt, setOriginalPrompt] = useState("");
   const [generatedPlaylist, setGeneratedPlaylist] = useState<{
+    id?: number;
     title: string;
     description: string;
     songs: Song[];
@@ -55,6 +56,7 @@ export default function Home() {
     },
     onSuccess: (playlist) => {
       setGeneratedPlaylist({
+        id: playlist.id,
         title: playlist.title,
         description: playlist.description,
         songs: playlist.songs,
@@ -172,6 +174,7 @@ export default function Home() {
               songs={generatedPlaylist.songs}
               title={generatedPlaylist.title}
               description={generatedPlaylist.description}
+              playlistId={generatedPlaylist.id}
             />
           </div>
         )}

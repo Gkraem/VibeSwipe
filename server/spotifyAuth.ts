@@ -1,16 +1,17 @@
 import passport from "passport";
-import { Strategy as SpotifyStrategy } from "passport-spotify";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-  throw new Error("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must be set");
+import { Strategy as SpotifyStrategy } from 'passport-spotify';
+
+if (!process.env.SPOTIFY_CLIENT_ID) {
+  throw new Error("Environment variable SPOTIFY_CLIENT_ID not provided");
 }
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+if (!process.env.SPOTIFY_CLIENT_SECRET) {
+  throw new Error("Environment variable SPOTIFY_CLIENT_SECRET not provided");
 }
 
 export function getSession() {
@@ -23,7 +24,7 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET || "vibe-swipe-secret-key",
+    secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -41,75 +42,58 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Get the current domain for callback URL
-  const domain = process.env.REPLIT_DOMAINS!.split(",")[0];
-  const callbackURL = `https://${domain}/api/callback`;
-
+  // Spotify Strategy
   passport.use(
     new SpotifyStrategy(
       {
         clientID: process.env.SPOTIFY_CLIENT_ID!,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-        callbackURL,
+        callbackURL: "/api/auth/spotify/callback",
       },
       async (accessToken: string, refreshToken: string, expires_in: number, profile: any, done: any) => {
         try {
-          // Store user data from Spotify profile
-          const userData = {
+          // Create or update user in database
+          const user = await storage.upsertUser({
             id: profile.id,
-            email: profile._json?.email || null,
-            firstName: profile.displayName?.split(" ")[0] || null,
-            lastName: profile.displayName?.split(" ").slice(1).join(" ") || null,
-            profileImageUrl: profile._json?.images?.[0]?.url || null,
-          };
+            email: profile.emails?.[0]?.value || null,
+            firstName: profile.displayName?.split(' ')[0] || null,
+            lastName: profile.displayName?.split(' ').slice(1).join(' ') || null,
+            profileImageUrl: profile.photos?.[0]?.value || null,
+          });
 
-          const user = await storage.upsertUser(userData);
-          
-          // Store tokens for API calls
-          const userWithTokens = {
-            ...user,
+          // Store tokens in session
+          const sessionUser = {
+            id: user.id,
             accessToken,
             refreshToken,
-            expiresIn: expires_in,
             expiresAt: Date.now() + (expires_in * 1000),
+            profile: user,
           };
 
-          return done(null, userWithTokens);
+          return done(null, sessionUser);
         } catch (error) {
-          return done(error as Error, null);
+          console.error("Error in Spotify auth:", error);
+          return done(error);
         }
       }
     )
   );
 
   passport.serializeUser((user: any, done) => {
-    done(null, user.id);
+    done(null, user);
   });
 
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (error) {
-      done(error as Error, undefined);
-    }
+  passport.deserializeUser((user: any, done) => {
+    done(null, user);
   });
 
   // Auth routes
   app.get("/api/login", passport.authenticate("spotify", {
-    scope: [
-      "user-read-email",
-      "user-read-private",
-      "playlist-modify-public",
-      "playlist-modify-private",
-      "user-library-read",
-      "user-top-read"
-    ],
+    scope: ["user-read-email", "playlist-modify-public", "playlist-modify-private"],
   }));
 
-  app.get(
-    "/api/callback",
-    passport.authenticate("spotify", { failureRedirect: "/api/login" }),
+  app.get("/api/auth/spotify/callback",
+    passport.authenticate("spotify", { failureRedirect: "/" }),
     (req, res) => {
       res.redirect("/");
     }
@@ -120,11 +104,30 @@ export async function setupAuth(app: Express) {
       res.redirect("/");
     });
   });
+
+  // User info route
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user.profile;
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  return res.status(401).json({ message: "Unauthorized" });
+
+  const user = req.user as any;
+  
+  // Check if token is expired
+  if (user.expiresAt && Date.now() >= user.expiresAt) {
+    return res.status(401).json({ message: "Token expired" });
+  }
+
+  next();
 };

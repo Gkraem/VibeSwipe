@@ -29,9 +29,8 @@ export function PlaylistDisplay({
 
   const exportToSpotifyMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/playlists/${id}/export-spotify`, {
-        method: "POST",
-      });
+      const response = await apiRequest("POST", `/api/playlists/${id}/export-spotify`);
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -187,11 +186,14 @@ export function PlaylistDisplay({
         {/* Export Options */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
-            disabled
-            className="bg-green-600/50 text-white px-6 py-3 rounded-xl font-medium opacity-50 cursor-not-allowed flex items-center justify-center space-x-2"
+            onClick={handleExportToSpotify}
+            disabled={!playlistId || exportToSpotifyMutation.isPending}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             <Music className="h-4 w-4" />
-            <span>Export to Spotify</span>
+            <span>
+              {exportToSpotifyMutation.isPending ? "Exporting..." : "Export to Spotify"}
+            </span>
             <ExternalLink className="h-3 w-3" />
           </Button>
           <Button 
@@ -205,9 +207,15 @@ export function PlaylistDisplay({
           </Button>
         </div>
         
-        <p className="text-xs text-gray-500 text-center mt-4">
-          Export functionality coming soon! For now, enjoy your personalized playlist.
-        </p>
+        {playlistId ? (
+          <p className="text-xs text-gray-400 text-center mt-4">
+            Export your playlist directly to your Spotify account
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500 text-center mt-4">
+            Save this playlist first to enable Spotify export
+          </p>
+        )}
       </CardContent>
     </Card>
   );
