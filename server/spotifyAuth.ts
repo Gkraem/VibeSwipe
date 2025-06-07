@@ -95,10 +95,20 @@ export async function setupAuth(app: Express) {
   }));
 
   app.get("/api/auth/spotify/callback",
-    passport.authenticate("spotify", { 
-      failureRedirect: "/?error=auth_failed",
-      successRedirect: "/"
-    })
+    passport.authenticate("spotify", { failureRedirect: "/?error=auth_failed" }),
+    (req, res) => {
+      // Check if request is from mobile browser
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      if (isMobile) {
+        // For mobile, explicitly redirect to prevent Spotify dashboard redirect
+        res.redirect(`${req.protocol}://${req.get('host')}/`);
+      } else {
+        // For desktop, use standard redirect
+        res.redirect('/');
+      }
+    }
   );
 
   app.get("/api/logout", (req, res) => {
