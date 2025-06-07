@@ -196,7 +196,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
           
           {/* Action Buttons (only show on active card) */}
           {isActive && (
-            <div className="flex justify-center items-center space-x-6 mt-4">
+            <div className="flex justify-center items-center space-x-4 mt-4">
               <Button
                 size="sm"
                 onClick={() => handleButtonSwipe("left")}
@@ -204,6 +204,22 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
               >
                 <X className="h-6 w-6 text-red-400" />
               </Button>
+              
+              {/* Audio Preview Button */}
+              {hasAudio && (
+                <Button
+                  size="sm"
+                  onClick={toggleAudio}
+                  className="w-14 h-14 rounded-full bg-blue-500/20 hover:bg-blue-500/40 border-0 hover:scale-110 transition-all flex items-center justify-center"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-6 w-6 text-blue-400" />
+                  ) : (
+                    <Play className="h-6 w-6 text-blue-400" />
+                  )}
+                </Button>
+              )}
+              
               <Button
                 size="sm" 
                 onClick={() => handleButtonSwipe("right")}
@@ -215,6 +231,9 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
           )}
         </CardContent>
       </Card>
+      
+      {/* Hidden Audio Element */}
+      <audio ref={audioRef} preload="none" />
     </motion.div>
   );
 }
