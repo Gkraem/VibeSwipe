@@ -16,7 +16,7 @@ import {
   type SwipeHistoryEntry
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -26,6 +26,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  getAllUsersWithPlaylistCounts(): Promise<(User & { playlistCount: number })[]>;
   deleteUser(id: string): Promise<void>;
   
   // Conversation operations
@@ -128,6 +129,33 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .orderBy(desc(users.createdAt));
     return allUsers;
+  }
+
+  async getAllUsersWithPlaylistCounts(): Promise<(User & { playlistCount: number })[]> {
+    const usersWithCounts = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        password: users.password,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        spotifyUsername: users.spotifyUsername,
+        spotifyPassword: users.spotifyPassword,
+        spotifyAccessToken: users.spotifyAccessToken,
+        spotifyRefreshToken: users.spotifyRefreshToken,
+        spotifyUserId: users.spotifyUserId,
+        spotifyConnected: users.spotifyConnected,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        playlistCount: sql<number>`cast(count(${playlists.id}) as int)`,
+      })
+      .from(users)
+      .leftJoin(playlists, eq(users.id, playlists.userId))
+      .groupBy(users.id)
+      .orderBy(desc(users.createdAt));
+    
+    return usersWithCounts;
   }
 
   async deleteUser(id: string): Promise<void> {

@@ -14,6 +14,7 @@ interface AdminUser {
   lastName?: string;
   createdAt: string;
   spotifyConnected?: string;
+  playlistCount: number;
 }
 
 export default function AdminPanel() {
@@ -87,6 +88,7 @@ export default function AdminPanel() {
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Email</th>
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Joined</th>
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Spotify</th>
+                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Playlists</th>
                       <th className="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -125,6 +127,11 @@ export default function AdminPanel() {
                               Not connected
                             </span>
                           )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-900/20 text-blue-400 border border-blue-700/50">
+                            {user.playlistCount} playlists
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <Button

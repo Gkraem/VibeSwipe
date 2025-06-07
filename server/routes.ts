@@ -320,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin endpoint - get all users (restricted to admin)
+  // Admin endpoint - get all users with playlist counts (restricted to admin)
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
       const userEmail = req.user.email;
@@ -330,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      const users = await storage.getAllUsers();
+      const users = await storage.getAllUsersWithPlaylistCounts();
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
