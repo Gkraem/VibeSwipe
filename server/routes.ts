@@ -237,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken,
         spotifyUser.id,
         playlist.title,
-        JSON.parse(playlist.songs as string) as Song[],
+        typeof playlist.songs === 'string' ? JSON.parse(playlist.songs) : playlist.songs as Song[],
         playlist.description || undefined
       );
 

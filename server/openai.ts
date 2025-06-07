@@ -436,10 +436,24 @@ export async function generatePlaylistFromLikedSongs(likedSongs: Song[], origina
   } catch (error) {
     console.error("Error generating playlist metadata:", error);
     
-    // Fallback
+    // Generate fallback based on user's original request and liked songs
+    const genres = [...new Set(likedSongs.flatMap(song => song.genres))];
+    const mainGenre = genres[0] || "Music";
+    
+    let title = "Your Vibe Swipe Playlist";
+    if (originalPrompt.toLowerCase().includes('study')) {
+      title = `${mainGenre} Study Session`;
+    } else if (originalPrompt.toLowerCase().includes('workout')) {
+      title = `${mainGenre} Workout Mix`;
+    } else if (originalPrompt.toLowerCase().includes('chill')) {
+      title = `Chill ${mainGenre} Vibes`;
+    } else if (genres.length > 0) {
+      title = `${mainGenre} Mix`;
+    }
+    
     return {
-      title: "Your Vibe Swipe Playlist",
-      description: "A personalized mix based on your selections"
+      title,
+      description: `A personalized ${likedSongs.length}-track playlist based on your music preferences`
     };
   }
 }
