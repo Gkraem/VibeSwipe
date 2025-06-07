@@ -362,6 +362,7 @@ For specific genres like Afro House, include established artists like Black Coff
 
     const result = JSON.parse(response.choices[0].message.content || '{"songs": []}');
     const songs: Song[] = [];
+    const seenSongs = new Set<string>(); // Track duplicates
     
     if (result.songs && Array.isArray(result.songs)) {
       // Process all songs from the result (up to 40)
@@ -370,6 +371,16 @@ For specific genres like Afro House, include established artists like Black Coff
       for (let i = 0; i < songsToProcess && songs.length < 25; i++) {
         const songData = result.songs[i];
         if (!songData.title || !songData.artist) continue;
+        
+        // Create duplicate detection key
+        const duplicateKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+        
+        // Skip duplicates
+        if (seenSongs.has(duplicateKey)) {
+          console.log(`Skipping duplicate: "${songData.title}" by "${songData.artist}"`);
+          continue;
+        }
+        seenSongs.add(duplicateKey);
         
         // Create unique ID for the song
         const songId = `ai-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
@@ -443,6 +454,14 @@ For specific genres like Afro House, include established artists like Black Coff
         for (let i = 0; i < additionalResult.songs.length && songs.length < 25; i++) {
           const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
+          
+          // Check for duplicates in additional songs
+          const duplicateKey = `${songData.title.toLowerCase().trim()}-${songData.artist.toLowerCase().trim()}`;
+          if (seenSongs.has(duplicateKey)) {
+            console.log(`Skipping duplicate additional song: "${songData.title}" by "${songData.artist}"`);
+            continue;
+          }
+          seenSongs.add(duplicateKey);
           
           const songId = `ai-${Date.now()}-${songs.length}-${Math.random().toString(36).substr(2, 9)}`;
           

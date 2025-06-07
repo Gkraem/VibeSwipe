@@ -393,6 +393,15 @@ export default function Home() {
               onSpotifyExport={(spotifyUrl) => {
                 setGeneratedPlaylist(prev => prev ? { ...prev, spotifyUrl } : null);
               }}
+              onReset={() => {
+                // Clear everything and return to chat interface
+                setSuggestions([]);
+                setCurrentIndex(0);
+                setLikedSongs([]);
+                setOriginalPrompt("");
+                setGeneratedPlaylist(null);
+                setGenerationProgress(0);
+              }}
             />
           </div>
         )}
