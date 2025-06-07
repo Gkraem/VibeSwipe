@@ -370,6 +370,13 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
             previewUrl: track.preview_url || undefined
           };
           
+          // Debug log for preview URLs
+          if (track.preview_url) {
+            console.log(`Track "${track.name}" has preview URL:`, track.preview_url);
+          } else {
+            console.log(`Track "${track.name}" has no preview URL`);
+          }
+          
           allSongs.push(song);
           
           if (allSongs.length >= 50) break;

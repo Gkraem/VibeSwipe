@@ -24,14 +24,19 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
 
   // Check if song has preview URL and setup audio
   useEffect(() => {
+    console.log('Song preview URL:', song.previewUrl); // Debug log
     if (song.previewUrl && audioRef.current) {
+      console.log('Setting up audio for:', song.title); // Debug log
       setHasAudio(true);
       audioRef.current.src = song.previewUrl;
       audioRef.current.volume = 0.5;
       
       const audio = audioRef.current;
       const handleEnded = () => setIsPlaying(false);
-      const handleError = () => setHasAudio(false);
+      const handleError = () => {
+        console.log('Audio error for:', song.title); // Debug log
+        setHasAudio(false);
+      };
       
       audio.addEventListener('ended', handleEnded);
       audio.addEventListener('error', handleError);
@@ -41,9 +46,10 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
         audio.removeEventListener('error', handleError);
       };
     } else {
+      console.log('No preview URL for:', song.title); // Debug log
       setHasAudio(false);
     }
-  }, [song.previewUrl]);
+  }, [song.previewUrl, song.title]);
 
   // Stop audio when card is not active
   useEffect(() => {
