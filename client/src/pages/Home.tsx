@@ -196,15 +196,16 @@ export default function Home() {
 
   const generateMoreSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
-      // Start progress simulation with more realistic timing
+      // Start smooth time-based progress
       setGenerationProgress(0);
+      const startTime = Date.now();
+      const expectedDuration = 25000; // 25 seconds expected duration
+      
       const progressInterval = setInterval(() => {
-        setGenerationProgress(prev => {
-          if (prev >= 85) return prev + Math.random() * 2; // Slow down near the end
-          if (prev >= 70) return prev + Math.random() * 5; // Medium speed
-          return prev + Math.random() * 12; // Faster initially
-        });
-      }, 800);
+        const elapsed = Date.now() - startTime;
+        const timeProgress = Math.min((elapsed / expectedDuration) * 100, 95);
+        setGenerationProgress(timeProgress);
+      }, 100);
 
       try {
         const response = await apiRequest("POST", "/api/songs/generate", {

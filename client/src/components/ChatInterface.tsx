@@ -39,14 +39,16 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      // Start progress simulation
+      // Start smooth time-based progress
       setGenerationProgress(0);
+      const startTime = Date.now();
+      const expectedDuration = 25000; // 25 seconds expected duration
+      
       const progressInterval = setInterval(() => {
-        setGenerationProgress(prev => {
-          if (prev >= 95) return prev;
-          return prev + Math.random() * 15;
-        });
-      }, 500);
+        const elapsed = Date.now() - startTime;
+        const timeProgress = Math.min((elapsed / expectedDuration) * 100, 95);
+        setGenerationProgress(timeProgress);
+      }, 100);
 
       try {
         const response = await apiRequest("POST", "/api/chat/send", {
