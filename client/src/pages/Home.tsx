@@ -58,22 +58,12 @@ export default function Home() {
   });
   const { toast } = useToast();
 
-  // Clear home screen on app load but preserve original prompt if available
+  // Only recover original prompt on app load - don't clear anything
   useEffect(() => {
-    localStorage.removeItem('lastGeneratedPlaylist');
-    setGeneratedPlaylist(null);
-    setSuggestions([]);
-    setCurrentIndex(0);
-    setLikedSongs([]);
-    setGenerationProgress(0);
-    
-    // Recover original prompt if available
     const savedPrompt = localStorage.getItem('originalPrompt');
     if (savedPrompt) {
       setOriginalPrompt(savedPrompt);
       console.log("Recovered original prompt:", savedPrompt);
-    } else {
-      setOriginalPrompt("");
     }
   }, []);
 
