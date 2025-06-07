@@ -17,6 +17,7 @@ export default function Home() {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [originalPrompt, setOriginalPrompt] = useState("");
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [generatedPlaylist, setGeneratedPlaylist] = useState<{
     id?: number;
     title: string;
@@ -190,15 +191,15 @@ export default function Home() {
 
   const generateMoreSongsMutation = useMutation({
     mutationFn: async ({ prompt, excludeIds }: { prompt: string; excludeIds: string[] }) => {
-      // Start smooth time-based progress
-      setGenerationProgress(0);
+      // Start countdown timer
+      setTimeRemaining(31);
       const startTime = Date.now();
-      const expectedDuration = 25000; // 25 seconds expected duration
+      const expectedDuration = 31000; // 31 seconds expected duration
       
-      const progressInterval = setInterval(() => {
+      const countdownInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const timeProgress = Math.min((elapsed / expectedDuration) * 100, 95);
-        setGenerationProgress(timeProgress);
+        const remaining = Math.max(0, Math.ceil((expectedDuration - elapsed) / 1000));
+        setTimeRemaining(remaining);
       }, 100);
 
       try {
@@ -208,15 +209,14 @@ export default function Home() {
         });
         const result = await response.json();
         
-        // Complete progress smoothly
-        clearInterval(progressInterval);
-        setGenerationProgress(100);
-        setTimeout(() => setGenerationProgress(0), 1000);
+        // Complete countdown
+        clearInterval(countdownInterval);
+        setTimeRemaining(0);
         
         return result;
       } catch (error) {
-        clearInterval(progressInterval);
-        setGenerationProgress(0);
+        clearInterval(countdownInterval);
+        setTimeRemaining(0);
         throw error;
       }
     },
@@ -391,10 +391,14 @@ export default function Home() {
             >
               {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 25 More Songs"}
             </Button>
-            {generateMoreSongsMutation.isPending && generationProgress > 0 && (
+            {generateMoreSongsMutation.isPending && timeRemaining > 0 && (
               <div className="mt-4 max-w-sm mx-auto space-y-2">
-                <Progress value={Math.min(generationProgress, 100)} className="w-full h-2" />
-                <p className="text-sm text-gray-400">{Math.min(Math.round(generationProgress), 100)}% complete</p>
+                <div className="text-center">
+                  <p className="text-lg font-medium text-purple-300">
+                    Time remaining: {timeRemaining}s
+                  </p>
+                  <p className="text-sm text-gray-400">Finding real songs with previews...</p>
+                </div>
               </div>
             )}
           </div>
