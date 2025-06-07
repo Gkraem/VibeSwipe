@@ -62,6 +62,7 @@ export const playlists = pgTable("playlists", {
   description: text("description"),
   songs: jsonb("songs").notNull(), // Array of song objects
   totalDuration: integer("total_duration"), // Duration in seconds
+  spotifyUrl: text("spotify_url"), // Spotify playlist URL
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

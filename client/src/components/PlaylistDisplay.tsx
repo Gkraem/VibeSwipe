@@ -19,6 +19,7 @@ interface PlaylistDisplayProps {
   playlistId?: number;
   onUpdateTitle?: (title: string) => void;
   editable?: boolean;
+  spotifyUrl?: string;
 }
 
 export function PlaylistDisplay({ 
@@ -29,7 +30,8 @@ export function PlaylistDisplay({
   isGenerating = false,
   playlistId,
   onUpdateTitle,
-  editable = false
+  editable = false,
+  spotifyUrl
 }: PlaylistDisplayProps) {
   const { toast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -270,6 +272,20 @@ export function PlaylistDisplay({
             <ExternalLink className="h-3 w-3" />
           </Button>
         </div>
+
+        {/* Listen in Spotify Button */}
+        {spotifyUrl && (
+          <div className="mt-4 text-center">
+            <Button 
+              onClick={() => window.open(spotifyUrl, '_blank')}
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-medium flex items-center justify-center space-x-2 mx-auto"
+            >
+              <Music className="h-4 w-4" />
+              <span>Listen in Spotify</span>
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
         
         {playlistId ? (
           <p className="text-xs text-gray-400 text-center mt-4">

@@ -286,6 +286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         playlist.description || undefined
       );
 
+      // Update playlist with Spotify URL
+      await storage.updatePlaylist(playlistId, { spotifyUrl: result.playlistUrl });
+
       res.json({
         success: true,
         playlistUrl: result.playlistUrl,
