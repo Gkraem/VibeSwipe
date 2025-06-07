@@ -26,19 +26,6 @@ export default function Home() {
     spotifyUrl?: string;
   } | null>(null);
 
-  // Check for Spotify callback success on page load
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('spotify_connected') === 'true') {
-      toast({
-        title: "Spotify Connected!",
-        description: "You can now export your playlist to Spotify.",
-      });
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [toast]);
-
   const updatePlaylistTitleMutation = useMutation({
     mutationFn: async ({ id, title }: { id: number; title: string }) => {
       const response = await apiRequest("PATCH", `/api/playlists/${id}`, { title });
@@ -59,7 +46,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.reload();
+          window.location.href = "/auth";
         }, 500);
         return;
       }
@@ -87,7 +74,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.reload();
+          window.location.href = "/auth";
         }, 500);
         return;
       }
@@ -124,7 +111,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.reload();
+          window.location.href = "/api/login";
         }, 500);
         return;
       }
@@ -181,7 +168,7 @@ export default function Home() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.reload();
+          window.location.href = "/api/login";
         }, 500);
         return;
       }
@@ -276,6 +263,19 @@ export default function Home() {
   const showSwipeInterface = suggestions.length > 0 && currentIndex < suggestions.length;
   const showGenerateButton = likedSongs.length >= 3 && currentIndex >= suggestions.length;
   const showMoreSongsButton = suggestions.length > 0 && currentIndex >= suggestions.length - 5;
+
+  // Check for Spotify callback success on page load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('spotify_connected') === 'true') {
+      toast({
+        title: "Spotify Connected!",
+        description: "You can now export your playlist to Spotify.",
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
