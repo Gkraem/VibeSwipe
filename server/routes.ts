@@ -140,6 +140,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/songs/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt, excludeIds = [] } = req.body;
+
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const songs = await generateSongSuggestions(prompt, excludeIds);
+      res.json({ songs });
+    } catch (error) {
+      console.error("Error generating additional songs:", error);
+      res.status(500).json({ message: "Failed to generate songs" });
+    }
+  });
+
   // Swipe tracking routes
   app.post('/api/swipe', isAuthenticated, async (req: any, res) => {
     try {
