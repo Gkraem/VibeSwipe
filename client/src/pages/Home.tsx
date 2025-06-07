@@ -260,14 +260,18 @@ export default function Home() {
   const handleSuggestionsGenerated = (songs: Song[], prompt: string) => {
     console.log("handleSuggestionsGenerated called with:", songs.length, "songs");
     console.log("Setting original prompt to:", prompt);
+    
+    // Persist the original prompt to localStorage immediately
+    localStorage.setItem('originalPrompt', prompt);
+    
     setSuggestions(songs);
     setCurrentIndex(0);
     setLikedSongs([]);
     setOriginalPrompt(prompt);
     setGeneratedPlaylist(null);
     
-    // Persist the original prompt to localStorage for recovery
-    localStorage.setItem('originalPrompt', prompt);
+    console.log("Original prompt set in state:", prompt);
+    console.log("Original prompt saved to localStorage:", localStorage.getItem('originalPrompt'));
   };
 
   const handleResetSearch = () => {
@@ -361,29 +365,26 @@ export default function Home() {
               onClick={() => {
                 const excludeIds = suggestions.map(s => s.id);
                 
-                // Get prompt from state or localStorage as fallback
-                let promptToUse = originalPrompt;
-                if (!promptToUse) {
-                  promptToUse = localStorage.getItem('originalPrompt') || '';
-                }
+                // Force get from localStorage since state might be lost
+                const storedPrompt = localStorage.getItem('originalPrompt');
                 
                 console.log("Original prompt from state:", originalPrompt);
-                console.log("Prompt from localStorage:", localStorage.getItem('originalPrompt'));
-                console.log("Using prompt:", promptToUse);
-                console.log("Current suggestions count:", suggestions.length);
-                console.log("Excluded IDs:", excludeIds.length);
+                console.log("Stored prompt from localStorage:", storedPrompt);
                 
-                if (!promptToUse) {
-                  console.error("No original prompt available for generating more songs");
+                if (!storedPrompt) {
+                  console.error("No stored prompt available for generating more songs");
                   toast({
-                    title: "Error",
-                    description: "Original prompt not found. Please start a new search.",
+                    title: "Error", 
+                    description: "Please start a new search to generate more songs.",
                     variant: "destructive",
                   });
                   return;
                 }
                 
-                generateMoreSongsMutation.mutate({ prompt: promptToUse, excludeIds });
+                console.log("Using stored prompt:", storedPrompt);
+                console.log("Excluded IDs count:", excludeIds.length);
+                
+                generateMoreSongsMutation.mutate({ prompt: storedPrompt, excludeIds });
               }}
               disabled={generateMoreSongsMutation.isPending}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
