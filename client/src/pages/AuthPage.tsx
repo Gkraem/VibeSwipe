@@ -46,8 +46,7 @@ export default function AuthPage() {
         title: "Welcome back!",
         description: "Successfully signed in.",
       });
-      // Force page refresh to trigger auth state update
-      window.location.href = "/";
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -68,8 +67,7 @@ export default function AuthPage() {
         title: "Welcome to Vibe Swipe!",
         description: "Account created successfully.",
       });
-      // Force page refresh to trigger auth state update
-      window.location.href = "/";
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({

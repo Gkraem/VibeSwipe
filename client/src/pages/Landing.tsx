@@ -2,13 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Music, Sparkles, Heart, Shuffle } from "lucide-react";
 
-import { useLocation } from "wouter";
-
 export default function Landing() {
-  const [, setLocation] = useLocation();
-  
   const handleLogin = () => {
-    setLocation('/auth');
+    window.location.href = '/api/login';
   };
 
   return (
