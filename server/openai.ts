@@ -317,90 +317,114 @@ export async function generateChatResponse(prompt: string): Promise<AIResponse> 
 }
 
 export async function generateSongSuggestions(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
-  console.log(`Generating Spotify-verified songs for prompt: "${prompt}"`);
-  
-  const spotifyToken = await getSpotifyClientToken();
-  if (!spotifyToken) {
-    throw new Error("Unable to connect to Spotify. Please check the Spotify API credentials.");
-  }
+  try {
+    // Use OpenAI to generate a curated list of 50 songs
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are a music expert curator. Generate exactly 25 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on streaming platforms. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
-  const songs: Song[] = [];
-  const seenTracks = new Set<string>();
-  const excludeSet = new Set(excludeIds);
-  
-  // Get search queries based on the prompt
-  const searchQueries = getSearchQueriesForPrompt(prompt);
-  
-  // Search Spotify for authentic tracks with preview prioritization
-  for (const query of searchQueries) {
-    if (songs.length >= 25) break;
+Example format:
+{
+  "songs": [
+    {
+      "title": "Someone Like You",
+      "artist": "Adele",
+      "album": "21",
+      "genres": ["pop", "soul"],
+      "energy": 0.3,
+      "valence": 0.2,
+      "duration": 285
+    }
+  ]
+}
+
+Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
+        },
+        {
+          role: "user",
+          content: `Generate 25 songs for: ${prompt}`
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"songs": []}');
+    const songs: Song[] = [];
     
-    try {
-      const { spotifyService } = await import('./spotifyApi');
-      const tracks = await spotifyService.searchTracks(spotifyToken, query, 20);
+    if (result.songs && Array.isArray(result.songs)) {
+      // Process up to 25 songs from the result
+      const songsToProcess = Math.min(result.songs.length, 25);
       
-      // Prioritize tracks with preview URLs
-      const tracksWithPreviews = tracks.filter(track => track.preview_url);
-      const tracksWithoutPreviews = tracks.filter(track => !track.preview_url);
-      const prioritizedTracks = [...tracksWithPreviews, ...tracksWithoutPreviews];
-      
-      for (const track of prioritizedTracks) {
-        if (songs.length >= 25) break;
+      for (let i = 0; i < songsToProcess; i++) {
+        const songData = result.songs[i];
+        if (!songData.title || !songData.artist) continue;
         
-        const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
-        if (seenTracks.has(trackKey) || excludeSet.has(track.id)) continue;
+        // Create unique ID for the song
+        const songId = `ai-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
         
-        seenTracks.add(trackKey);
+        // Skip if this song ID is in excludeIds
+        if (excludeIds.includes(songId)) continue;
         
+        // Get both album art and preview URL from Spotify
+        const spotifyToken = await getSpotifyClientToken();
+        const spotifyData = spotifyToken 
+          ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
+          : { albumArt: null, previewUrl: null };
+
         const song: Song = {
-          id: `spotify-${track.id}`,
-          title: track.name,
-          artist: track.artists.map(a => a.name).join(', '),
-          album: track.album.name,
-          albumArt: track.album.images?.[0]?.url || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
-          duration: Math.round(track.duration_ms / 1000),
-          genres: determineGenresFromPrompt(prompt),
-          energy: Math.random() * 0.6 + 0.4,
-          valence: Math.random() * 0.6 + 0.4,
-          previewUrl: track.preview_url || undefined
+          id: songId,
+          title: songData.title,
+          artist: songData.artist,
+          album: songData.album || `${songData.artist} - Singles`,
+          albumArt: spotifyData.albumArt || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
+          duration: songData.duration || Math.floor(Math.random() * 120) + 180, // 3-5 minutes
+          genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
+          energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
+          valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
+          previewUrl: spotifyData.previewUrl || undefined
         };
         
         songs.push(song);
       }
-    } catch (error) {
-      console.error(`Error searching Spotify for "${query}":`, error);
     }
-  }
-  
-  // If we still need more songs, try OpenAI as fallback
-  if (songs.length < 25) {
-    try {
-      const response = await openai.chat.completions.create({
+    
+    // Ensure we always return exactly 25 songs by requesting more if needed
+    if (songs.length < 25) {
+      console.log(`Generated ${songs.length} songs, requesting ${25 - songs.length} more...`);
+      const additionalNeeded = 25 - songs.length;
+      
+      const additionalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `Generate ${25 - songs.length} song recommendations as JSON. Focus on popular tracks.`
+            content: `Generate exactly ${additionalNeeded} more songs for the same request. Return as JSON with "songs" array. Make sure all songs are real, popular tracks.`
           },
           {
             role: "user",
-            content: `Generate songs for: ${prompt}`
+            content: `Generate ${additionalNeeded} additional songs for: ${prompt}`
           }
         ],
         response_format: { type: "json_object" },
       });
-
-      const result = JSON.parse(response.choices[0].message.content || '{"songs": []}');
       
-      if (result.songs && Array.isArray(result.songs)) {
-        for (let i = 0; i < result.songs.length && songs.length < 25; i++) {
-          const songData = result.songs[i];
+      const additionalResult = JSON.parse(additionalResponse.choices[0].message.content || '{"songs": []}');
+      
+      if (additionalResult.songs && Array.isArray(additionalResult.songs)) {
+        for (let i = 0; i < additionalResult.songs.length && songs.length < 25; i++) {
+          const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
           
           const songId = `ai-${Date.now()}-${songs.length}-${Math.random().toString(36).substr(2, 9)}`;
           
-          // Get Spotify data for AI-suggested songs
-          const spotifyData = await getSpotifyTrackData(songData.title, songData.artist, spotifyToken);
+          // Get both album art and preview URL from Spotify
+          const spotifyToken = await getSpotifyClientToken();
+          const spotifyData = spotifyToken 
+            ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
+            : { albumArt: null, previewUrl: null };
 
           const song: Song = {
             id: songId,
@@ -412,27 +436,21 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
             genres: Array.isArray(songData.genres) ? songData.genres.slice(0, 3) : ['pop'],
             energy: typeof songData.energy === 'number' ? songData.energy : Math.random() * 0.6 + 0.2,
             valence: typeof songData.valence === 'number' ? songData.valence : Math.random() * 0.6 + 0.2,
-            previewUrl: spotifyData.previewUrl || undefined
+            previewUrl: spotifyData.previewUrl
           };
           
           songs.push(song);
         }
       }
-    } catch (error) {
-      console.error("OpenAI fallback failed:", error);
-      
-      // Final fallback using Spotify search directly
-      if (songs.length < 25) {
-        const fallbackSongs = await generateFallbackSongs(prompt, Array.from(seenTracks));
-        songs.push(...fallbackSongs.slice(0, 25 - songs.length));
-      }
     }
+    
+    console.log(`AI Response: Generated ${songs.length} songs for prompt: "${prompt}"`);
+    return songs;
+    
+  } catch (error) {
+    console.error("OpenAI song generation failed:", error);
+    throw new Error("OpenAI API quota exceeded. Please provide a valid API key with available credits to generate song recommendations.");
   }
-  
-  const songsWithPreviews = songs.filter(s => s.previewUrl).length;
-  console.log(`Generated ${songs.length} songs from Spotify, ${songsWithPreviews} with audio previews`);
-  
-  return songs;
 }
 
 // Get Spotify client credentials token for public API access
@@ -463,53 +481,31 @@ async function getSpotifyClientToken(): Promise<string | null> {
 // Get both album art and preview URL from Spotify for a specific song
 async function getSpotifyTrackData(title: string, artist: string, token: string): Promise<{ albumArt: string | null; previewUrl: string | null }> {
   try {
-    // Try multiple search strategies to find tracks with previews
-    const searchQueries = [
-      `track:"${title}" artist:"${artist}"`,
-      `"${title}" "${artist}"`,
-      `${title} ${artist}`,
-      title // fallback
-    ];
-
-    for (const query of searchQueries) {
-      const encodedQuery = encodeURIComponent(query);
-      console.log(`🎵 Searching Spotify for: "${title}" by "${artist}" (query: ${query})`);
-      
-      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodedQuery}&type=track&limit=10`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        console.log(`❌ Spotify API error for "${title}": ${response.status}`);
-        continue;
+    const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
+    });
 
-      const data = await response.json();
-      
-      if (data.tracks?.items?.length > 0) {
-        // Prioritize tracks that have preview URLs
-        const tracksWithPreviews = data.tracks.items.filter((track: any) => track.preview_url);
-        const trackToUse = tracksWithPreviews.length > 0 ? tracksWithPreviews[0] : data.tracks.items[0];
-        
-        const albumArt = trackToUse.album?.images?.length > 0 
-          ? (trackToUse.album.images.find((img: any) => img.width === 300) || trackToUse.album.images[0]).url
-          : null;
-        
-        const previewUrl = trackToUse.preview_url;
-        console.log(`🎧 Found track "${trackToUse.name}" by "${trackToUse.artists[0].name}" - Preview: ${previewUrl ? 'Available' : 'Not Available'}`);
-        
-        if (previewUrl || query === title) { // Accept if has preview or it's our last attempt
-          return { 
-            albumArt, 
-            previewUrl: previewUrl || null 
-          };
-        }
-      }
+    if (!response.ok) {
+      return { albumArt: null, previewUrl: null };
     }
 
-    console.log(`❌ No Spotify results found for "${title}" by "${artist}"`);
+    const data = await response.json();
+    
+    if (data.tracks?.items?.length > 0) {
+      const track = data.tracks.items[0];
+      const albumArt = track.album?.images?.length > 0 
+        ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
+        : null;
+      
+      return { 
+        albumArt, 
+        previewUrl: track.preview_url || null 
+      };
+    }
+
     return { albumArt: null, previewUrl: null };
   } catch (error) {
     console.error('Error fetching Spotify track data:', error);
@@ -702,84 +698,83 @@ function getCuratedQueriesForPrompt(prompt: string): string[] {
 }
 
 // Generate fallback songs that vary based on user prompt
-async function generateFallbackSongs(prompt: string, excludeIds: string[] = []): Promise<Song[]> {
-  console.log("Using Spotify-based fallback song generation for prompt:", prompt);
-  
-  const spotifyToken = await getSpotifyClientToken();
-  if (!spotifyToken) {
-    console.log("No Spotify token available for fallback generation");
-    return [];
-  }
-
-  // Use real Spotify search queries based on prompt
-  const searchQueries = getSearchQueriesForPrompt(prompt);
-  const songs: Song[] = [];
-  const seenTracks = new Set<string>();
-  const excludeSet = new Set(excludeIds);
-
-  for (const query of searchQueries) {
-    if (songs.length >= 25) break;
-    
-    try {
-      const { spotifyService } = await import('./spotifyApi');
-      const tracks = await spotifyService.searchTracks(spotifyToken, query, 10);
-      
-      for (const track of tracks) {
-        if (songs.length >= 25) break;
-        
-        const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
-        if (seenTracks.has(trackKey) || excludeSet.has(track.id)) continue;
-        
-        seenTracks.add(trackKey);
-        
-        const song: Song = {
-          id: `spotify-${track.id}`,
-          title: track.name,
-          artist: track.artists.map(a => a.name).join(', '),
-          album: track.album.name,
-          albumArt: track.album.images?.[0]?.url || "https://via.placeholder.com/300x300/1DB954/FFFFFF?text=Music",
-          duration: Math.round(track.duration_ms / 1000),
-          genres: ["Pop"], // Spotify doesn't provide genre data directly
-          energy: Math.random() * 0.6 + 0.4,
-          valence: Math.random() * 0.6 + 0.4,
-          previewUrl: track.preview_url || undefined
-        };
-        
-        songs.push(song);
-      }
-    } catch (error) {
-      console.error(`Error searching Spotify for "${query}":`, error);
-    }
-  }
-  
-  console.log(`Generated ${songs.length} fallback songs from Spotify, ${songs.filter(s => s.previewUrl).length} with previews`);
-  return songs;
-}
-
-function getSearchQueriesForPrompt(prompt: string): string[] {
+function generateFallbackSongs(prompt: string, excludeIds: string[] = []): Song[] {
   const promptLower = prompt.toLowerCase();
   
-  if (promptLower.includes('workout') || promptLower.includes('gym') || promptLower.includes('exercise')) {
-    return ['workout playlist', 'gym music', 'high energy', 'pump up songs', 'fitness motivation'];
-  } else if (promptLower.includes('chill') || promptLower.includes('relax') || promptLower.includes('calm')) {
-    return ['chill music', 'relaxing songs', 'lo-fi', 'ambient music', 'study music'];
-  } else if (promptLower.includes('party') || promptLower.includes('dance') || promptLower.includes('club')) {
-    return ['dance music', 'party songs', 'club hits', 'electronic dance', 'upbeat music'];
-  } else if (promptLower.includes('sad') || promptLower.includes('cry') || promptLower.includes('depressed')) {
-    return ['sad songs', 'emotional music', 'breakup songs', 'melancholy', 'heartbreak'];
-  } else if (promptLower.includes('love') || promptLower.includes('romantic') || promptLower.includes('date')) {
-    return ['love songs', 'romantic music', 'slow songs', 'ballads', 'date night'];
-  } else if (promptLower.includes('indie') || promptLower.includes('alternative')) {
-    return ['indie music', 'alternative rock', 'indie pop', 'indie folk', 'underground'];
-  } else if (promptLower.includes('rock') || promptLower.includes('metal')) {
-    return ['rock music', 'classic rock', 'alternative rock', 'indie rock', 'guitar music'];
-  } else if (promptLower.includes('hip hop') || promptLower.includes('rap')) {
-    return ['hip hop', 'rap music', 'urban music', 'trap', 'contemporary rap'];
-  } else if (promptLower.includes('pop')) {
-    return ['pop music', 'top hits', 'chart music', 'mainstream pop', 'radio hits'];
-  } else {
-    return ['popular music', 'top songs', 'trending music', 'new releases', 'chart hits'];
-  }
+  // Define genre-specific song databases
+  const genreTemplates = {
+    workout: {
+      artists: ["FitBeats", "PowerPulse", "GymFlow", "MotivateMe", "EnergyBoost", "PumpUp", "DriveForce", "MaxPower"],
+      titles: ["Push Through", "Never Give Up", "Beast Mode", "Unstoppable", "Rise Up", "Go Hard", "No Limits", "Champion"],
+      genres: ["Electronic", "Hip Hop", "Rock"],
+      energy: [0.8, 0.9],
+      valence: [0.7, 0.9],
+      tempo: [120, 160]
+    },
+    chill: {
+      artists: ["ChillVibes", "MellowWaves", "SoftSounds", "CalmBreeze", "RelaxMode", "PeacefulBeats", "TranquilTones"],
+      titles: ["Floating", "Peaceful Mind", "Sunset Dreams", "Quiet Moments", "Slow Motion", "Drift Away", "Serenity"],
+      genres: ["Lo-fi", "Ambient", "Indie"],
+      energy: [0.2, 0.5],
+      valence: [0.4, 0.7],
+      tempo: [60, 100]
+    },
+    indie: {
+      artists: ["The Dreamers", "Velvet Echo", "Midnight Canvas", "Golden Hours", "Paper Hearts", "Neon Nights"],
+      titles: ["Coffee Shop Dreams", "Vintage Soul", "City Lights", "Lost in Time", "Paper Planes", "Autumn Rain"],
+      genres: ["Indie Pop", "Alternative", "Indie Rock"],
+      energy: [0.5, 0.7],
+      valence: [0.5, 0.8],
+      tempo: [90, 130]
+    },
+    electronic: {
+      artists: ["SynthWave", "DigitalDreams", "NeonPulse", "CyberBeats", "ElectroFlow", "FutureSound"],
+      titles: ["Digital Love", "Neon Nights", "Electric Dreams", "Cyber City", "Pulse Wave", "Future Shock"],
+      genres: ["Electronic", "Synthwave", "EDM"],
+      energy: [0.7, 0.9],
+      valence: [0.6, 0.9],
+      tempo: [110, 150]
+    },
+    jazz: {
+      artists: ["Blue Note Collective", "Smooth Sounds", "Jazz Lounge", "Midnight Sessions", "Soul Kitchen"],
+      titles: ["Blue Monday", "Smooth Operator", "Late Night", "City Jazz", "Velvet Voice", "Swing Time"],
+      genres: ["Jazz", "Smooth Jazz", "Blues"],
+      energy: [0.3, 0.6],
+      valence: [0.4, 0.7],
+      tempo: [80, 120]
+    },
+    pop: {
+      artists: ["Pop Stars", "Chart Toppers", "Hit Makers", "Radio Ready", "Mainstream", "Billboard"],
+      titles: ["Summer Nights", "Feel Good", "Dance Floor", "Good Vibes", "Party Time", "Catch Me"],
+      genres: ["Pop", "Dance Pop", "Electropop"],
+      energy: [0.6, 0.8],
+      valence: [0.7, 0.9],
+      tempo: [100, 140]
+    }
+  };
+
+  // Add more specific genre templates for different moods
+  const sadGenreTemplate = {
+    artists: ["Adele", "Sam Smith", "Lewis Capaldi", "Billie Eilish", "The Weeknd", "Lana Del Rey", "Johnny Cash", "Hurt", "Mad World", "Skinny Love"],
+    titles: ["Someone Like You", "Too Good At Goodbyes", "Someone You Loved", "When The Party's Over", "Call Out My Name", "Video Games", "Hurt", "Mad World", "Skinny Love", "Black"],
+    genres: ["Pop", "Alternative", "Indie"],
+    energy: [0.1, 0.4],
+    valence: [0.1, 0.3],
+    tempo: [60, 90]
+  };
+
+  const breakupGenreTemplate = {
+    artists: ["Taylor Swift", "Olivia Rodrigo", "Adele", "Amy Winehouse", "The 1975", "Giveon", "Harry Styles", "Tate McRae"],
+    titles: ["All Too Well", "Drivers License", "Someone Like You", "Back to Black", "Somebody Else", "Heartbreak Anniversary", "Falling", "You Broke Me First"],
+    genres: ["Pop", "Alternative", "R&B"],
+    energy: [0.2, 0.5],
+    valence: [0.1, 0.4],
+    tempo: [70, 100]
+  };
+
+  // Return empty array when no OpenAI available to maintain data integrity
+  console.log("OpenAI not available for song generation - returning empty result");
+  return [];
 }
 
 export async function generatePlaylistFromLikedSongs(likedSongs: Song[], originalPrompt: string): Promise<{ title: string; description: string }> {
