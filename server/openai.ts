@@ -514,9 +514,15 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
         ? (track.album.images.find((img: any) => img.width === 300) || track.album.images[0]).url
         : null;
       
+      // If Spotify doesn't have preview URL, try to get YouTube audio
+      let previewUrl = track.preview_url || null;
+      if (!previewUrl) {
+        previewUrl = await getYouTubeAudioPreview(title, artist);
+      }
+      
       return { 
         albumArt, 
-        previewUrl: track.preview_url || undefined 
+        previewUrl 
       };
     }
 
@@ -524,6 +530,71 @@ async function getSpotifyTrackData(title: string, artist: string, token: string)
   } catch (error) {
     console.error('Error fetching Spotify track data:', error);
     return { albumArt: null, previewUrl: null };
+  }
+}
+
+// Get YouTube audio preview for a song
+async function getYouTubeAudioPreview(title: string, artist: string): Promise<string | null> {
+  try {
+    // For now, we'll create a simple YouTube search URL that can be used for audio
+    // This is a simplified approach - in production you'd use YouTube Data API
+    const searchQuery = encodeURIComponent(`${title} ${artist} official audio`);
+    
+    // Since we can't directly get YouTube audio URLs without complex setup,
+    // let's use a different approach: create preview URLs using a music service
+    // that's more likely to have previews available
+    
+    return await getAlternativePreviewUrl(title, artist);
+  } catch (error) {
+    console.error('Error getting YouTube preview:', error);
+    return null;
+  }
+}
+
+// Alternative preview URL generation (using a demo approach)
+async function getAlternativePreviewUrl(title: string, artist: string): Promise<string | null> {
+  // For demonstration, we'll create a mock preview URL
+  // In production, you would integrate with services like:
+  // - iTunes Preview API
+  // - SoundCloud API  
+  // - YouTube Data API
+  // - Last.fm API
+  
+  // For now, let's try a different Spotify search strategy
+  try {
+    const spotifyToken = await getSpotifyClientToken();
+    if (!spotifyToken) return null;
+    
+    // Try alternative search queries
+    const searchQueries = [
+      `${title} ${artist}`,
+      `${title}`,
+      `${artist} ${title}`
+    ];
+    
+    for (const query of searchQueries) {
+      const encodedQuery = encodeURIComponent(query);
+      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodedQuery}&type=track&limit=5`, {
+        headers: { 'Authorization': `Bearer ${spotifyToken}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tracks?.items?.length > 0) {
+          for (const track of data.tracks.items) {
+            if (track.preview_url) {
+              console.log(`Found preview URL with alternative search for "${title}":`, track.preview_url);
+              return track.preview_url;
+            }
+          }
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting alternative preview:', error);
+    return null;
   }
 }
 
