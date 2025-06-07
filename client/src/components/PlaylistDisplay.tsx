@@ -56,7 +56,7 @@ export function PlaylistDisplay({
         onSpotifyExport?.(data.playlistUrl);
       }
     },
-    onError: (error) => {
+    onError: async (error) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -64,10 +64,23 @@ export function PlaylistDisplay({
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
+      
+      // Check if this is a Spotify auth error
+      try {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes("Spotify access token not found") || errorMessage.includes("connect to Spotify")) {
+          // Open Spotify OAuth popup
+          await handleSpotifyAuth();
+          return;
+        }
+      } catch (e) {
+        // Continue to regular error handling
+      }
+      
       toast({
         title: "Export Failed",
         description: error instanceof Error ? error.message : "Failed to export playlist to Spotify",
@@ -75,6 +88,41 @@ export function PlaylistDisplay({
       });
     },
   });
+
+  const handleSpotifyAuth = async () => {
+    try {
+      // Get Spotify auth URL
+      const response = await apiRequest("GET", "/api/spotify/auth");
+      const data = await response.json();
+      
+      // Open popup window
+      const popup = window.open(
+        data.authUrl,
+        'spotify-auth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+      
+      // Poll for popup closure
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          // Retry export after auth
+          if (playlistId) {
+            setTimeout(() => {
+              exportToSpotifyMutation.mutate(playlistId);
+            }, 1000);
+          }
+        }
+      }, 1000);
+      
+    } catch (error) {
+      toast({
+        title: "Authentication Failed",
+        description: "Failed to connect to Spotify. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleExportToSpotify = () => {
     if (playlistId) {

@@ -7,6 +7,13 @@ import { insertMessageSchema, insertConversationSchema, insertPlaylistSchema, in
 import { spotifyService } from "./spotifyApi";
 import { z } from "zod";
 
+declare module "express-session" {
+  interface SessionData {
+    spotifyAccessToken?: string;
+    spotifyUserId?: string;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
@@ -294,6 +301,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initiate Spotify OAuth for playlist export
+  app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
+    const spotifyAuthUrl = `https://accounts.spotify.com/authorize?` +
+      `client_id=${process.env.SPOTIFY_CLIENT_ID}&` +
+      `response_type=code&` +
+      `redirect_uri=${encodeURIComponent(`${req.protocol}://${req.get('host')}/api/spotify/callback`)}&` +
+      `scope=playlist-modify-public playlist-modify-private&` +
+      `state=${req.user.id}`;
+    
+    res.json({ authUrl: spotifyAuthUrl });
+  });
+
+  // Handle Spotify OAuth callback for playlist export
+  app.get('/api/spotify/callback', async (req, res) => {
+    try {
+      const { code, state: userId } = req.query;
+      
+      if (!code) {
+        return res.redirect('/?error=spotify_auth_failed');
+      }
+
+      // Exchange code for access token
+      const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString('base64')}`
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code as string,
+          redirect_uri: `${req.protocol}://${req.get('host')}/api/spotify/callback`
+        })
+      });
+
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenData.access_token) {
+        return res.redirect('/?error=spotify_token_failed');
+      }
+
+      // Store the Spotify access token temporarily in the user session
+      (req.session as any).spotifyAccessToken = tokenData.access_token;
+      (req.session as any).spotifyUserId = String(userId);
+      
+      // Redirect back to the app with success
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Spotify Connected</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #191414; color: white; }
+            .success { color: #1db954; font-size: 24px; margin-bottom: 20px; }
+          </style>
+          <script>
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+          </script>
+        </head>
+        <body>
+          <div class="success">✓ Spotify Connected!</div>
+          <p>You can now export your playlist. This window will close automatically.</p>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Spotify callback error:', error);
+      res.redirect('/?error=spotify_callback_failed');
+    }
+  });
+
   // Spotify export route
   app.post('/api/playlists/:id/export-spotify', isAuthenticated, async (req: any, res) => {
     try {
@@ -306,9 +386,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user's Spotify access token from session
-      const accessToken = req.user.accessToken;
+      const accessToken = (req.session as any).spotifyAccessToken;
       if (!accessToken) {
-        return res.status(401).json({ message: "Spotify access token not found. Please log in again." });
+        return res.status(401).json({ 
+          message: "Spotify access token not found. Please connect to Spotify first.",
+          requiresAuth: true
+        });
       }
 
       // Get current Spotify user
@@ -335,10 +418,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error exporting to Spotify:", error);
-      res.status(500).json({ 
-        message: "Failed to export playlist to Spotify. Please try again.",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      if (error instanceof Error && error.message.includes('access_token')) {
+        res.status(401).json({ 
+          message: "Spotify access token expired. Please connect to Spotify again.",
+          requiresAuth: true
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to export playlist to Spotify. Please try again.",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     }
   });
 
