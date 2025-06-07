@@ -108,7 +108,7 @@ export function ChatInterface({ onSuggestionsGenerated }: ChatInterfaceProps) {
             <div
               key={index}
               className={`flex items-start chat-message ${
-                message.role === "user" ? "justify-end space-x-4" : "space-x-3"
+                message.role === "user" ? "justify-end space-x-6" : "space-x-3"
               }`}
             >
               {message.role === "assistant" && (
