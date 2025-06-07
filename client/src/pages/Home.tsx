@@ -356,8 +356,20 @@ export default function Home() {
             <Button
               onClick={() => {
                 const excludeIds = suggestions.map(s => s.id);
-                const prompt = originalPrompt || "Generate more music recommendations";
-                generateMoreSongsMutation.mutate({ prompt, excludeIds });
+                console.log("Generating more songs with original prompt:", originalPrompt);
+                console.log("Current suggestions count:", suggestions.length);
+                console.log("Excluded IDs:", excludeIds.length);
+                
+                if (!originalPrompt) {
+                  console.error("No original prompt available for generating more songs");
+                  toast({
+                    title: "Error",
+                    description: "Original prompt not found. Please start a new search.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                generateMoreSongsMutation.mutate({ prompt: originalPrompt, excludeIds });
               }}
               disabled={generateMoreSongsMutation.isPending}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
