@@ -373,6 +373,13 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
         const spotifyData = spotifyToken 
           ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
           : { albumArt: null, previewUrl: null };
+        
+        console.log(`Spotify data for "${songData.title}" by "${songData.artist}":`, {
+          hasToken: !!spotifyToken,
+          albumArt: !!spotifyData.albumArt,
+          previewUrl: !!spotifyData.previewUrl,
+          previewUrlValue: spotifyData.previewUrl
+        });
 
         const song: Song = {
           id: songId,
@@ -425,6 +432,13 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
           const spotifyData = spotifyToken 
             ? await getSpotifyTrackData(songData.title, songData.artist, spotifyToken)
             : { albumArt: null, previewUrl: null };
+          
+          console.log(`Additional Spotify data for "${songData.title}" by "${songData.artist}":`, {
+            hasToken: !!spotifyToken,
+            albumArt: !!spotifyData.albumArt,
+            previewUrl: !!spotifyData.previewUrl,
+            previewUrlValue: spotifyData.previewUrl
+          });
 
           const song: Song = {
             id: songId,
