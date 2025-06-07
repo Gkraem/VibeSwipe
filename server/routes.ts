@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./spotifyAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { generateChatResponse, generateSongSuggestions, generatePlaylistFromLikedSongs } from "./openai";
 import { insertMessageSchema, insertConversationSchema, insertPlaylistSchema, insertSwipeHistorySchema, type Song } from "@shared/schema";
 import { spotifyService } from "./spotifyApi";
