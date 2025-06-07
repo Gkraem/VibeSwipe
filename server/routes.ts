@@ -319,6 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('=== SPOTIFY AUTH DEBUG ===');
     console.log('Using registered redirect URI:', redirectUri);
     console.log('Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Present' : 'Missing');
+    console.log('Client ID value:', process.env.SPOTIFY_CLIENT_ID ? process.env.SPOTIFY_CLIENT_ID.substring(0, 8) + '...' : 'MISSING');
     console.log('User ID:', req.user.id);
     console.log('User Agent:', req.get('User-Agent'));
     console.log('==========================');
@@ -327,6 +328,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userAgent = req.get('User-Agent') || '';
     const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     
+    // Validate required parameters before creating URL
+    if (!process.env.SPOTIFY_CLIENT_ID) {
+      console.error('SPOTIFY_CLIENT_ID is missing from environment variables');
+      return res.status(500).json({ 
+        message: "Spotify client ID is not configured",
+        error: "missing_client_id"
+      });
+    }
+
     const spotifyAuthUrl = `https://accounts.spotify.com/authorize?` +
       `client_id=${process.env.SPOTIFY_CLIENT_ID}&` +
       `response_type=code&` +
