@@ -148,10 +148,10 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
           
           {/* Song Info */}
           <div className="flex-1">
-            <h4 className="font-bold text-lg mb-1 text-white truncate">
+            <h4 className="font-bold text-lg mb-1 text-gray-900 dark:text-white truncate">
               {song.title}
             </h4>
-            <p className="text-gray-400 mb-3 truncate">
+            <p className="text-gray-600 dark:text-gray-400 mb-3 truncate">
               {song.artist}
             </p>
             
@@ -186,7 +186,7 @@ export function SwipeCard({ song, onSwipe, isActive = false, style }: SwipeCardP
             </div>
             
             {/* Description */}
-            <p className="text-sm text-gray-300 truncate">
+            <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
               {song.energy && song.energy > 0.7 ? "High-energy" : 
                song.energy && song.energy < 0.4 ? "Mellow" : "Mid-tempo"} {song.genres[0].toLowerCase()} track
               {song.valence && song.valence > 0.7 ? " with uplifting vibes" : 
@@ -239,8 +239,8 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
 
   return (
     <div className="text-center mb-8">
-      <h3 className="text-xl font-bold mb-2 text-white">Swipe Through AI Suggestions</h3>
-      <p className="text-gray-400 mb-6">Swipe right to add to playlist, left to skip</p>
+      <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Swipe Through AI Suggestions</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">Swipe right to add to playlist, left to skip</p>
       
       {/* Cards Container */}
       <div className="relative h-96 flex items-center justify-center mb-8">
@@ -250,8 +250,8 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
           </div>
         ) : currentIndex >= songs.length ? (
           <div className="text-center">
-            <p className="text-gray-400 mb-4">You've gone through all the suggestions.</p>
-            <p className="text-green-400">Liked {likedCount} songs</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">You've gone through all the suggestions.</p>
+            <p className="text-green-500 dark:text-green-400">Liked {likedCount} songs</p>
           </div>
         ) : (
           // Render visible cards
