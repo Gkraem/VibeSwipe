@@ -36,6 +36,7 @@ export interface IStorage {
   createPlaylist(playlist: InsertPlaylist): Promise<Playlist>;
   getUserPlaylists(userId: string): Promise<Playlist[]>;
   getPlaylist(id: number): Promise<Playlist | undefined>;
+  updatePlaylist(id: number, updates: Partial<InsertPlaylist>): Promise<Playlist>;
   
   // Swipe history operations
   createSwipeHistory(swipe: InsertSwipeHistory): Promise<SwipeHistoryEntry>;
@@ -154,6 +155,18 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(playlists)
       .where(eq(playlists.id, id));
+    return playlist;
+  }
+
+  async updatePlaylist(id: number, updates: Partial<InsertPlaylist>): Promise<Playlist> {
+    const [playlist] = await db
+      .update(playlists)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(playlists.id, id))
+      .returning();
     return playlist;
   }
 
