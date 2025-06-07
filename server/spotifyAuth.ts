@@ -99,10 +99,66 @@ export async function setupAuth(app: Express) {
   }));
 
   app.get("/api/auth/spotify/callback",
-    passport.authenticate("spotify", { 
-      failureRedirect: "/?error=auth_failed",
-      successRedirect: "/"
-    })
+    passport.authenticate("spotify", { failureRedirect: "/?error=auth_failed" }),
+    (req, res) => {
+      // For mobile devices, send HTML with forced redirect
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      if (isMobile) {
+        res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login Successful</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #191414; color: white; }
+    .container { max-width: 400px; margin: 0 auto; }
+    .success { color: #1db954; font-size: 24px; margin-bottom: 20px; }
+    .redirect-btn { 
+      background: #1db954; 
+      color: white; 
+      padding: 15px 30px; 
+      border: none; 
+      border-radius: 25px; 
+      font-size: 16px; 
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin: 20px 0;
+    }
+  </style>
+  <script>
+    // Multiple redirect attempts for mobile
+    setTimeout(() => {
+      window.location.replace('/');
+    }, 1000);
+    
+    setTimeout(() => {
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
+    }, 3000);
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="success">✓ Login Successful!</div>
+    <p>Redirecting to Vibe Swipe...</p>
+    <a href="/" class="redirect-btn">Continue to App</a>
+    <p style="font-size: 14px; margin-top: 30px;">
+      If you're not redirected automatically, tap "Continue to App" above.
+    </p>
+  </div>
+</body>
+</html>
+        `);
+      } else {
+        // Standard redirect for desktop
+        res.redirect('/');
+      }
+    }
   );
 
   app.get("/api/logout", (req, res) => {
