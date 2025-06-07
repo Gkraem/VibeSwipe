@@ -339,12 +339,9 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
       try {
         const tracks = await spotifyService.searchTracks(spotifyToken, query, 20);
         
+        console.log(`Query "${query}" returned ${tracks.length} tracks`);
+        
         for (const track of tracks) {
-          // Only include tracks that have preview URLs
-          if (!track.preview_url) {
-            continue;
-          }
-          
           const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
           
           // Skip duplicates and excluded songs
@@ -362,12 +359,11 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
             albumArt: track.album.images[0]?.url || getRandomAlbumArt(),
             duration: Math.floor(track.duration_ms / 1000),
             genres: determineGenresFromPrompt(prompt),
-            energy: Math.random() * 0.4 + 0.5, // Realistic energy range
-            valence: Math.random() * 0.6 + 0.3, // Realistic valence range  
-            tempo: Math.floor(Math.random() * 60) + 90, // 90-150 BPM
-            previewUrl: track.preview_url
+            energy: Math.random() * 0.4 + 0.5,
+            valence: Math.random() * 0.6 + 0.3,
+            tempo: Math.floor(Math.random() * 60) + 90,
+            previewUrl: track.preview_url || undefined
           };
-          
 
           allSongs.push(song);
           
@@ -503,11 +499,6 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
       for (const track of tracks) {
         if (songs.length >= needed) break;
         
-        // Only include tracks with preview URLs
-        if (!track.preview_url) {
-          continue;
-        }
-        
         const trackKey = `${track.name.toLowerCase()}-${track.artists[0].name.toLowerCase()}`;
         
         if (seenTracks.has(trackKey) || excludeIds.includes(track.id)) {
@@ -527,7 +518,7 @@ async function getCuratedSpotifyTracks(prompt: string, needed: number, seenTrack
           energy: Math.random() * 0.4 + 0.5,
           valence: Math.random() * 0.6 + 0.3,
           tempo: Math.floor(Math.random() * 60) + 90,
-          previewUrl: track.preview_url
+          previewUrl: track.preview_url || undefined
         };
         
         songs.push(song);
