@@ -51,22 +51,18 @@ export default function AdminPanel() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button asChild variant="ghost" className="text-white hover:bg-white/10">
-              <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
-              <p className="text-gray-300">Manage users and system settings</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-8">
+          <Link href="/" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+        
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Panel</h1>
+          <p className="text-gray-300">Manage users and system settings</p>
         </div>
 
         {/* Users Table */}
