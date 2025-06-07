@@ -303,13 +303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initiate Spotify OAuth for playlist export
   app.get('/api/spotify/auth', isAuthenticated, (req: any, res) => {
-    // Use the correct Replit domain format
-    const host = req.get('host');
-    const redirectUri = `https://${host}/api/spotify/callback`;
+    // Use exact redirect URI that should be in Spotify app settings
+    const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/spotify/callback';
     
     console.log('=== SPOTIFY AUTH DEBUG ===');
-    console.log('Host:', host);
-    console.log('Redirect URI:', redirectUri);
+    console.log('Using hardcoded redirect URI:', redirectUri);
+    console.log('Client ID:', process.env.SPOTIFY_CLIENT_ID ? 'Present' : 'Missing');
+    console.log('User ID:', req.user.id);
     console.log('==========================');
     
     const spotifyAuthUrl = `https://accounts.spotify.com/authorize?` +
@@ -317,7 +317,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `response_type=code&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=playlist-modify-public playlist-modify-private&` +
-      `state=${req.user.id}`;
+      `state=${req.user.id}&` +
+      `show_dialog=true`;
+    
+    console.log('Generated auth URL:', spotifyAuthUrl);
     
     res.json({ authUrl: spotifyAuthUrl });
   });
@@ -343,11 +346,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/?error=spotify_auth_failed');
       }
 
-      // Exchange code for access token
-      const host = req.get('host');
-      const redirectUri = `https://${host}/api/spotify/callback`;
+      // Exchange code for access token - use same hardcoded URI
+      const redirectUri = 'https://b57b8bfb-ba97-46c9-8cd5-5172ac4f1ff1-00-39gr6ib0bs69n.spock.replit.dev/api/spotify/callback';
       
-      console.log('Token exchange redirect URI:', redirectUri);
+      console.log('=== TOKEN EXCHANGE DEBUG ===');
+      console.log('Using hardcoded redirect URI for token exchange:', redirectUri);
+      console.log('============================');
       
       const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
