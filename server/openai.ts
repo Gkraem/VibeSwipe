@@ -324,7 +324,7 @@ export async function generateSongSuggestions(prompt: string, excludeIds: string
       messages: [
         {
           role: "system",
-          content: `You are a music expert curator. Generate exactly 50 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on streaming platforms. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
+          content: `You are a music expert curator. Generate exactly 25 high-quality song recommendations based on the user's request. Focus on popular, well-known songs that are available on streaming platforms. Return your response as a JSON object with a "songs" array containing objects with: title, artist, album (optional), genres (array of 1-3 genres), energy (0-1), valence (0-1), duration (in seconds, typical range 180-300).
 
 Example format:
 {
@@ -345,7 +345,7 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
         },
         {
           role: "user",
-          content: `Generate 50 songs for: ${prompt}`
+          content: `Generate 25 songs for: ${prompt}`
         }
       ],
       response_format: { type: "json_object" },
@@ -355,8 +355,8 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
     const songs: Song[] = [];
     
     if (result.songs && Array.isArray(result.songs)) {
-      // Process up to 50 songs from the result
-      const songsToProcess = Math.min(result.songs.length, 50);
+      // Process up to 25 songs from the result
+      const songsToProcess = Math.min(result.songs.length, 25);
       
       for (let i = 0; i < songsToProcess; i++) {
         const songData = result.songs[i];
@@ -385,10 +385,10 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
       }
     }
     
-    // Ensure we always return exactly 50 songs by requesting more if needed
-    if (songs.length < 50) {
-      console.log(`Generated ${songs.length} songs, requesting ${50 - songs.length} more...`);
-      const additionalNeeded = 50 - songs.length;
+    // Ensure we always return exactly 25 songs by requesting more if needed
+    if (songs.length < 25) {
+      console.log(`Generated ${songs.length} songs, requesting ${25 - songs.length} more...`);
+      const additionalNeeded = 25 - songs.length;
       
       const additionalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -408,7 +408,7 @@ Make sure all songs are real, popular tracks. Avoid obscure or made-up songs.`
       const additionalResult = JSON.parse(additionalResponse.choices[0].message.content || '{"songs": []}');
       
       if (additionalResult.songs && Array.isArray(additionalResult.songs)) {
-        for (let i = 0; i < additionalResult.songs.length && songs.length < 50; i++) {
+        for (let i = 0; i < additionalResult.songs.length && songs.length < 25; i++) {
           const songData = additionalResult.songs[i];
           if (!songData.title || !songData.artist) continue;
           

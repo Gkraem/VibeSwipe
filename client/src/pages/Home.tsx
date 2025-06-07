@@ -250,7 +250,7 @@ export default function Home() {
               disabled={generateMoreSongsMutation.isPending}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
-              {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 50 More Songs"}
+              {generateMoreSongsMutation.isPending ? "Generating..." : "Generate 25 More Songs"}
             </Button>
           </div>
         )}
