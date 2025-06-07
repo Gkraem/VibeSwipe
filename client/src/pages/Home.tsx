@@ -73,35 +73,54 @@ export default function Home() {
     }
   }, []);
 
-  // Handle mobile Spotify authentication return
+  // Handle Spotify authentication return
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const spotifySuccess = urlParams.get('spotify_success');
-    const spotifyError = urlParams.get('spotify_error');
+    const spotifyConnected = urlParams.get('spotify_connected');
+    const pendingExportId = localStorage.getItem('pendingSpotifyExport');
+    const mobilePlaylist = sessionStorage.getItem('mobile_export_playlist');
     
-    if (spotifySuccess === 'true') {
-      const tempToken = sessionStorage.getItem('spotify_temp_token');
-      if (tempToken) {
-        toast({
-          title: "Spotify Connected!",
-          description: "Your account is now connected for playlist exports.",
-        });
-        sessionStorage.removeItem('spotify_temp_token');
-      }
+    if (spotifyConnected === 'true') {
+      // Clear the pending export
+      localStorage.removeItem('pendingSpotifyExport');
       
       // Clear URL params
       window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (spotifyError) {
+      
       toast({
-        title: "Spotify Connection Failed",
-        description: "Unable to connect to Spotify. Please try again.",
-        variant: "destructive",
+        title: "Spotify Connected!",
+        description: "Now exporting your playlist...",
       });
       
-      // Clear URL params
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Handle mobile playlist export
+      if (mobilePlaylist) {
+        try {
+          const playlistData = JSON.parse(mobilePlaylist);
+          sessionStorage.removeItem('mobile_export_playlist');
+          
+          // Trigger the export for mobile
+          if (playlistData.id) {
+            setTimeout(() => {
+              const exportEvent = new CustomEvent('triggerSpotifyExport', { 
+                detail: { playlistId: playlistData.id } 
+              });
+              window.dispatchEvent(exportEvent);
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Error parsing mobile playlist data:', error);
+        }
+      } else if (pendingExportId && generatedPlaylist?.id?.toString() === pendingExportId) {
+        // Desktop export
+        setTimeout(() => {
+          const exportEvent = new CustomEvent('triggerSpotifyExport', { 
+            detail: { playlistId: parseInt(pendingExportId) } 
+          });
+          window.dispatchEvent(exportEvent);
+        }, 1000);
+      }
     }
-  }, [toast]);
+  }, [generatedPlaylist, toast]);
 
   const swipeMutation = useMutation({
     mutationFn: async ({ songId, action }: { songId: string; action: "like" | "skip" }) => {

@@ -9,7 +9,7 @@ import Landing from "@/pages/Landing";
 import AuthPage from "@/pages/AuthPage";
 import Home from "@/pages/Home";
 import SettingsPage from "@/pages/SettingsPage";
-import SpotifyCallback from "@/pages/SpotifyCallback";
+
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,8 +28,7 @@ function Router() {
           <Route path="/auth" component={AuthPage} />
         </>
       )}
-      {/* Spotify callback route - accessible regardless of auth status */}
-      <Route path="/spotify-callback" component={SpotifyCallback} />
+
       <Route component={NotFound} />
     </Switch>
   );

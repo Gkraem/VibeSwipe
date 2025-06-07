@@ -9,7 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { getSpotifyWebAPI } from "@/lib/spotifyWebApi";
+
 import { useState, useEffect } from "react";
 import type { Song } from "@shared/schema";
 
@@ -45,48 +45,92 @@ export function PlaylistDisplay({
   const [editedTitle, setEditedTitle] = useState(title);
 
   const exportToSpotifyMutation = useMutation({
-    mutationFn: async () => {
-      const spotifyAPI = getSpotifyWebAPI();
-      
-      if (!title || !songs.length) {
-        throw new Error('No playlist data to export');
-      }
-      
-      const result = await spotifyAPI.exportPlaylistToSpotify(
-        songs,
-        title,
-        description
-      );
-      
-      return result;
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("POST", `/api/playlists/${id}/export-spotify`);
+      return await response.json();
     },
-    onSuccess: (data) => {
-      if (onSpotifyExport && data.playlistUrl) {
-        onSpotifyExport(data.playlistUrl);
-      }
+    onSuccess: (data: any) => {
       toast({
-        title: "Success!",
+        title: "Export Successful!",
         description: "Your playlist has been exported to Spotify!",
       });
+      if (data.playlistUrl) {
+        onSpotifyExport?.(data.playlistUrl);
+      }
     },
-    onError: (error) => {
-      let errorMessage = "Failed to export playlist to Spotify";
+    onError: async (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 500);
+        return;
+      }
       
-      if (error.message.includes("Popup blocked")) {
-        errorMessage = "Please allow popups for this site and try again";
-      } else if (error.message.includes("Authentication cancelled")) {
-        errorMessage = "Spotify authentication was cancelled";
-      } else if (error.message.includes("No tracks found")) {
-        errorMessage = "No matching tracks found on Spotify";
+      // Check if this is a Spotify auth error
+      try {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes("401") || errorMessage.includes("Ready to connect")) {
+          toast({
+            title: "Spotify Connection Required",
+            description: "Connecting to Spotify for mobile-friendly export...",
+          });
+          
+          await handleSpotifyAuth();
+          return;
+        }
+      } catch (e) {
+        // Continue to regular error handling
       }
       
       toast({
         title: "Export Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to export playlist to Spotify",
         variant: "destructive",
       });
     },
   });
+
+  const handleSpotifyAuth = async () => {
+    try {
+      // Store playlist ID for after auth redirect
+      if (playlistId) {
+        localStorage.setItem('pendingSpotifyExport', playlistId.toString());
+      }
+      
+      // Use mobile-friendly redirect flow
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // For mobile: store current state and redirect in same window
+        sessionStorage.setItem('mobile_export_playlist', JSON.stringify({
+          id: playlistId,
+          title,
+          description,
+          songs
+        }));
+      }
+      
+      // Get Spotify auth URL
+      const response = await apiRequest("GET", "/api/spotify/auth");
+      const data = await response.json();
+      
+      // Always redirect for better mobile compatibility
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      toast({
+        title: "Authentication Failed",
+        description: "Failed to connect to Spotify. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
 
 
@@ -95,7 +139,7 @@ export function PlaylistDisplay({
     const handleSpotifyExportTrigger = (event: CustomEvent) => {
       const { playlistId: triggerPlaylistId } = event.detail;
       if (playlistId && typeof playlistId === 'number' && playlistId === triggerPlaylistId) {
-        exportToSpotifyMutation.mutate();
+        exportToSpotifyMutation.mutate(playlistId);
       }
     };
 
@@ -107,7 +151,9 @@ export function PlaylistDisplay({
   }, [playlistId, exportToSpotifyMutation]);
 
   const handleExportToSpotify = () => {
-    exportToSpotifyMutation.mutate();
+    if (playlistId) {
+      exportToSpotifyMutation.mutate(playlistId);
+    }
   };
 
   const handleSaveTitle = () => {
@@ -264,7 +310,7 @@ export function PlaylistDisplay({
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
             onClick={handleExportToSpotify}
-            disabled={!title || !songs.length || exportToSpotifyMutation.isPending}
+            disabled={!playlistId || exportToSpotifyMutation.isPending}
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             <Music className="h-4 w-4" />
