@@ -230,12 +230,16 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
   const visibleCards = 3;
   
   const handleSwipe = (direction: "left" | "right") => {
-    if (currentIndex < songs.length) {
-      onSwipe(songs[currentIndex], direction);
+    try {
+      if (currentIndex < songs.length && songs[currentIndex]) {
+        onSwipe(songs[currentIndex], direction);
+      }
+    } catch (error) {
+      console.error('Error handling swipe:', error);
     }
   };
 
-  const progress = songs.length > 0 ? (currentIndex / songs.length) * 100 : 0;
+  const progress = songs.length > 0 ? Math.min((currentIndex / songs.length) * 100, 100) : 0;
 
   return (
     <div className="text-center mb-8">
@@ -265,6 +269,12 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
           Array.from({ length: Math.min(visibleCards, songs.length - currentIndex) }).map((_, index) => {
             const cardIndex = currentIndex + index;
             const song = songs[cardIndex];
+            
+            // Safety check to prevent rendering invalid cards
+            if (!song || cardIndex >= songs.length) {
+              return null;
+            }
+            
             const isActive = index === 0;
             const scale = isActive ? 1 : 0.95 - (index * 0.05);
             const opacity = isActive ? 1 : 0.8 - (index * 0.2);
@@ -283,7 +293,7 @@ export function SwipeInterface({ songs, onSwipe, currentIndex, likedCount }: Swi
                 }}
               />
             );
-          })
+          }).filter(Boolean)
         )}
       </div>
 
